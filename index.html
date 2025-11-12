@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GGD Calculator</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
+
+  <link rel="icon" type="image/png" href="images/logo_tomato_broomrape.png">
+  <meta property="og:image" content="images/logo_tomato_broomrape.png">
+  <meta property="og:title" content="Branched Broomrape GDD Calculator">
+  <meta property="og:description" content="Interactive Growing Degree Day Dashboard for California processing tomato.">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#f0fdf4 0%,#dbeafe 100%);padding:20px}
+    .container{max-width:1200px;margin:0 auto}
+    .card{background:#fff;border-radius:8px;padding:24px;margin-bottom:24px;box-shadow:0 4px 6px rgba(0,0,0,.1)}
+    h1{color:#166534;font-size:28px;margin-bottom:8px}
+    h2{color:#374151;font-size:20px;margin-bottom:16px}
+    .subtitle{color:#6b7280;margin-bottom:24px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+    @media (max-width:1024px){.grid{grid-template-columns:1fr}}
+    .btn{width:100%;padding:12px 16px;border:none;border-radius:6px;font-size:16px;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-primary{background:#2563eb;color:#fff}
+    .btn-primary:hover{background:#1d4ed8}
+    .btn-primary:disabled{background:#9ca3af;cursor:not-allowed}
+    .btn-secondary{background:#16a34a;color:#fff;margin-bottom:16px}
+    .btn-secondary:hover{background:#15803d}
+    .quick-btn{padding:8px 12px;background:#dcfce7;color:#166534;border:none;border-radius:6px;font-size:14px;cursor:pointer;transition:all .2s}
+    .quick-btn:hover{background:#bbf7d0}
+    .quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+    input[type=date]{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-size:16px;margin-bottom:12px}
+    input[type=checkbox]{margin-right:8px}
+    #map{height:300px;border-radius:8px;border:2px solid #93c5fd;margin-bottom:8px}
+    .info-text{font-size:14px;color:#6b7280;margin-top:8px}
+    .location-info{font-size:14px;color:#374151;margin-bottom:16px}
+    .location-name{font-weight:600}
+    .error{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:12px;border-radius:6px;margin-top:16px;font-size:14px;white-space:pre-wrap}
+    .result-box{background:#f0fdf4;border-radius:8px;padding:16px;margin-top:24px}
+    .result-value{font-size:36px;font-weight:700;color:#15803d}
+    .result-label{font-size:18px;font-weight:600;color:#374151;margin-bottom:8px}
+    
+    /* Viz: left (chart) | right (gauges) */
+    .viz-row{display:grid;grid-template-columns:1.8fr 1fr;gap:24px}
+    @media (max-width:1024px){.viz-row{grid-template-columns:1fr}}
+    .chart-wrap{border:1px dashed #e5e7eb;border-radius:8px;background:#fff;padding:16px;height:450px}
+    #chart{height:100%;width:100%}
+
+    /* Gauges 2x2 grid, smaller canvases */
+    .gauge-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+    .gauge-item{text-align:center}
+    .gauge-item canvas{width:100%;max-width:160px;height:auto}
+    .gauge-title{margin-top:6px;font-size:14px;font-weight:600;color:#374151}
+
+    /* Table */
+    table{width:100%;border-collapse:collapse;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+    th,td{padding:10px 14px;text-align:left;border:1px solid #e5e7eb}
+    thead tr{background:linear-gradient(135deg,#166534 0%,#15803d 100%);color:#fff}
+    thead th{font-weight:700;font-size:15px}
+    tbody tr:hover{background:#f9fafb}
+    .stage-cell{font-weight:700;color:#166534}
+    .progress-cell{width:70px}
+
+    .header-inline {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .header-logo {
+      width: 120px;
+      height: auto;
+      flex-shrink: 0;
+      border-radius: 8px;
+    }
+
+
+    
+  </style>
+</head>
+<body>
+  <div class="container">
+
+  <div class="card">
+  <div class="header-inline">
+    <img src="images/logo_tomato_broomrape.png" alt="Tomato and broomrape logo" class="header-logo">
+    <div>
+      <h1>Branched Broomrape Growing Degree Day (GDD) Calculator — California Processing Tomato</h1>
+      <p class="subtitle">🌡️ Tracks cumulative GDD since transplanting (Base Temp = 10 °C / 50 °F), including a 16-day forecast and 5-year historical average.</p>
+    </div>
+  </div>
+</div>
+
+
+<div class="grid">
+  <div class="card">
+    <h2>📍 Location</h2>
+    <div class="location-info">
+      <div class="location-name" id="locationName">Davis, CA</div>
+      <div style="font-size:12px;color:#6b7280">Lat: <span id="lat">38.5449</span>, Lon: <span id="lon">-121.7405</span></div>
+    </div>
+    <button class="btn btn-secondary" onclick="toggleMap()"><span id="mapBtnText">Show Interactive Map</span></button>
+    <div id="mapContainer" style="display:none">
+      <div id="map"></div>
+      <div class="info-text">Click on the map or drag the marker to select your location</div>
+    </div>
+    <div style="border-top:1px solid #e5e7eb;padding-top:16px;margin-top:16px">
+      <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:8px">Quick Locations:</div>
+      <div class="quick-grid">
+        <button class="quick-btn" onclick="setLocation(38.5449,-121.7405,'Davis, CA')">Davis, CA</button>
+        <button class="quick-btn" onclick="setLocation(38.6785,-121.7733,'Woodland, CA')">Woodland, CA</button>
+        <button class="quick-btn" onclick="setLocation(35.3735,-119.0205,'Bakersfield, CA')">Bakersfield, CA</button>
+        <button class="quick-btn" onclick="setLocation(36.0980,-119.5604,'Corcoran, CA')">Corcoran, CA</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📅 Date Range</h2>
+    <label for="plantingDate">Transplanting Date</label>
+    <input type="date" id="plantingDate" max=""/>
+    <label for="endDate">End Date</label>
+    <input type="date" id="endDate" max=""/>
+    <label class="checkbox-label" style="display:flex;align-items:center;font-size:14px;color:#374151;margin-bottom:12px">
+      <input type="checkbox" id="useTodayEnd" onchange="toggleEndDate()" checked/>
+      Use today as end date (includes 16-day forecast)
+    </label>
+    <button class="btn btn-primary" onclick="calculateGDD()" style="margin-top:16px">Calculate GDD</button>
+    <div id="error" class="error" style="display:none"></div>
+    <div id="result" style="display:none"></div>
+  </div>
+</div>
+
+<div id="vizCard" style="display:none; margin-bottom: 24px;">
+  <div class="viz-row">
+    <div class="card">       <h2>📈 GDD Accumulation</h2>
+      <div class="chart-wrap">
+        <canvas id="chart"></canvas>
+      </div>
+      <div style="margin-top:12px;font-size:14px;color:#6b7280">
+        <span style="color:#16a34a">━━━</span> Current season
+        &nbsp;&nbsp;<span style="color:#f59e0b">╌╌╌</span> 16-day forecast
+        &nbsp;&nbsp;<span style="color:#9ca3af">╌╌╌</span> 5-year average
+        &nbsp;&nbsp;<span style="color:#ef4444">│</span> Selected end date
+      </div>
+    </div>
+    <div class="card">       <h2>🌱 Broomrape Developmental Stages</h2>
+      <div class="gauge-grid">
+        <div class="gauge-item">
+          <canvas id="gaugeAttachment" width="160" height="120"></canvas>
+          <div class="gauge-title">Attachment</div>
+        </div>
+        <div class="gauge-item">
+          <canvas id="gaugeElongation" width="160" height="120"></canvas>
+          <div class="gauge-title">Elongation</div>
+        </div>
+        <div class="gauge-item">
+          <canvas id="gaugeEmergence" width="160" height="120"></canvas>
+          <div class="gauge-title">Emergence</div>
+        </div>
+        <div class="gauge-item">
+          <canvas id="gaugeFlowering" width="160" height="120"></canvas>
+          <div class="gauge-title">Flowering</div>
+        </div>
+      </div>
+      <div style="font-size:13px;color:#6b7280;text-align:center;margin-top:8px">
+        <span style="color:#16a34a">●</span> Current progress
+        &nbsp;&nbsp;<span style="color:#f59e0b">●</span> Forecasted progress
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="stagesTableCard" class="card" style="display:none">
+  <h2>📊 Critical Dates for Management</h2>
+  <table id="stagesTable">
+    <thead>
+      <tr>
+        <th>Stage</th>
+        <th class="progress-cell">Progress</th>
+        <th>5-Year Average</th>
+        <th>Selected Range</th>
+        <th>Comments</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+  </div>
+
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+
+  <script>
+    let currentLocation = { lat: 38.5449, lon: -121.7405 };
+    let map = null, marker = null, chartInstance = null;
+    let gaugeCharts = { attachment: null, elongation: null, emergence: null, flowering: null };
+    let selectedEndDateForLine = null; // for vertical line on chart
+    // let selectedEndDateForLine = null;
+
+    const endDateLinePlugin = {
+    id: 'endDateLine',
+    afterDatasetsDraw(chart, args, pluginOptions){
+      if(!selectedEndDateForLine) return;
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+      // Get pixel position of the date on the X-axis
+      const x = xScale.getPixelForValue(selectedEndDateForLine);
+      if (isNaN(x)) return;
+      
+      const ctx = chart.ctx;
+      ctx.save();
+      
+      // Draw the dashed line
+      ctx.setLineDash([6,4]);
+      ctx.strokeStyle = '#ef4444'; // Red color
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, yScale.top);
+      ctx.lineTo(x, yScale.bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // Optional: Add a label at the top of the line
+      ctx.fillStyle = '#ef4444';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      const d = new Date(selectedEndDateForLine);
+      const label = d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }); 
+
+      // Measure text width
+      const textWidth = ctx.measureText(label).width;
+      const padding = 6; // horizontal padding
+      const boxHeight = 18; // height of the box
+      const boxY = yScale.top + 2; // y position of box
+
+      // Draw filled box
+      ctx.fillStyle = '#ef4444'; // box background color
+      ctx.fillRect(x - textWidth/2 - padding, boxY, textWidth + padding * 2, boxHeight);
+
+      // Draw text on top
+      ctx.fillStyle = '#ffffff'; // white text color
+      ctx.fillText(label, x, yScale.top + 12);
+
+      ctx.restore();
+    }
+  };
+
+    // Date controls
+    const todayStr = new Date().toISOString().split('T')[0];
+    document.getElementById('plantingDate').max = todayStr;
+    document.getElementById('endDate').max = todayStr;
+    document.getElementById('endDate').value = todayStr;
+    document.getElementById('endDate').disabled = true;
+
+    function toggleEndDate(){
+      const checkbox = document.getElementById('useTodayEnd');
+      const endDateInput = document.getElementById('endDate');
+      endDateInput.disabled = checkbox.checked;
+      if(checkbox.checked){
+        endDateInput.value = todayStr;
+      }
+    }
+
+    function toggleMap(){
+      const c = document.getElementById('mapContainer');
+      const b = document.getElementById('mapBtnText');
+      if(c.style.display==='none'){ c.style.display='block'; b.textContent='Hide Map'; if(!map) initMap(); }
+      else { c.style.display='none'; b.textContent='Show Interactive Map'; }
+    }
+
+    function initMap(){
+      map = L.map('map').setView([currentLocation.lat,currentLocation.lon],5);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap contributors', maxZoom:19 }).addTo(map);
+      marker = L.marker([currentLocation.lat,currentLocation.lon],{draggable:true}).addTo(map);
+      marker.bindPopup(`${currentLocation.lat.toFixed(2)}, ${currentLocation.lon.toFixed(2)}`).openPopup();
+      marker.on('dragend', e=>{ const p=e.target.getLatLng(); setLocation(p.lat,p.lng,`${p.lat.toFixed(2)}°, ${p.lng.toFixed(2)}°`); });
+      map.on('click', e=>{ const p=e.latlng; marker.setLatLng(p); setLocation(p.lat,p.lng,`${p.lat.toFixed(2)}°, ${p.lng.toFixed(2)}°`); });
+    }
+
+    function setLocation(lat, lon, name){
+      currentLocation = { lat, lon };
+      document.getElementById('locationName').textContent = name;
+      document.getElementById('lat').textContent = lat.toFixed(4);
+      document.getElementById('lon').textContent = lon.toFixed(4);
+      if(marker && map){ marker.setLatLng([lat,lon]); marker.setPopupContent(`${lat.toFixed(2)}, ${lon.toFixed(2)}`).openPopup(); map.setView([lat,lon], map.getZoom()); }
+    }
+
+    // ---------- Broomrape params ----------
+    const BROOMRAPE_PARAMS = {
+      sigma: 573.5,
+      lambda: 4.58,
+      delta1: 84.51,
+      delta2: 180.9,
+      b: 1.35
+    };
+
+    function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+    function calculateAttachment(gdd) {
+      const { sigma, lambda } = BROOMRAPE_PARAMS;
+      if (gdd < 0) return 0;
+      return clamp01(1 - Math.exp(-Math.pow(gdd / sigma, lambda)));
+    }
+    function calculateElongation(gdd) {
+      const { sigma, lambda, delta1 } = BROOMRAPE_PARAMS;
+      if (gdd < delta1) return 0;
+      return clamp01(1 - Math.exp(-Math.pow((gdd - delta1) / sigma, lambda)));
+    }
+    function calculateEmergence(gdd) {
+      const { sigma, lambda, delta1, b } = BROOMRAPE_PARAMS;
+      const inner = ((gdd / b) - delta1) / sigma;
+      if (inner <= 0) return 0;
+      return clamp01(1 - Math.exp(-Math.pow(inner, lambda)));
+    }
+    function calculateFlowering(gdd) {
+      const { sigma, lambda, delta1, delta2, b } = BROOMRAPE_PARAMS;
+      const inner = (((gdd - delta2) / b) - delta1) / sigma;
+      if (inner <= 0) return 0;
+      return clamp01(1 - Math.exp(-Math.pow(inner, lambda)));
+    }
+
+    function createGaugeChart(canvasId, key, currentPercent, forecastPercent) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      if (gaugeCharts[key]) gaugeCharts[key].destroy();
+
+      const cur = Math.max(0, Math.min(100, currentPercent));
+      const forc = Math.max(cur, Math.min(100, forecastPercent));
+
+      gaugeCharts[key] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          datasets: [{
+            data: [cur, forc - cur, 100 - forc],
+            backgroundColor: ['#16a34a', '#f59e0b', '#e5e7eb'],
+            borderWidth: 0,
+            circumference: 180,
+            rotation: 270
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          aspectRatio: 2,
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+          },
+          cutout: '75%'
+        },
+        plugins: [{
+          id: 'gaugeText',
+          afterDraw: (chart) => {
+            const { ctx, chartArea: { width, height } } = chart;
+            ctx.save();
+            ctx.font = 'bold 22px Arial';
+            ctx.fillStyle = '#374151';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`${cur.toFixed(0)}%`, width / 2, height / 2 + 16);
+            if (cur < forc) {
+              ctx.font = '12px Arial';
+              ctx.fillStyle = '#6b7280';
+              ctx.fillText(`(${forc.toFixed(0)}% forecast)`, width / 2, height / 2 + 36);
+            }
+            ctx.restore();
+          }
+        }]
+      });
+    }
+
+    const fmt = d => d.toISOString().slice(0,10);
+    const addDays = (d,n)=>{ const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+
+    async function fetchJSON(url){
+      const resp = await fetch(url);
+      if(!resp.ok){
+        let msg = `${resp.status} ${resp.statusText}`;
+        try{ const t = await resp.text(); msg += `\n\n${t}`; }catch(_){}
+        throw new Error(msg);
+      }
+      return resp.json();
+    }
+
+    async function fetchDailyRange(lat, lon, startDate, endDate){
+      const tz = 'auto';
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const today = new Date(fmt(new Date()));
+      const yesterday = addDays(today,-1);
+
+      let times = [], tmax = [], tmin = [];
+
+      // Past (Archive)
+      const pastEnd = end < yesterday ? end : yesterday;
+      if(start <= pastEnd){
+        const a = await fetchJSON(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min&start_date=${fmt(start)}&end_date=${fmt(pastEnd)}&timezone=${tz}`);
+        if(a.daily){ times.push(...a.daily.time); tmax.push(...a.daily.temperature_2m_max); tmin.push(...a.daily.temperature_2m_min); }
+      }
+
+      // Present+Future (Forecast)
+      const futStart = start > today ? start : today;
+      if(futStart <= end){
+        const f = await fetchJSON(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min&start_date=${fmt(futStart)}&end_date=${fmt(end)}&timezone=${tz}`);
+        if(f.daily){ times.push(...f.daily.time); tmax.push(...f.daily.temperature_2m_max); tmin.push(...f.daily.temperature_2m_min); }
+      }
+
+      // Deduplicate and sort
+      const merged = [];
+      for (let i = 0; i < times.length; i++) merged.push({ date: times[i], tmax: tmax[i], tmin: tmin[i] });
+      const unique = Object.values(merged.reduce((acc, d) => { acc[d.date] = d; return acc; }, {}));
+      unique.sort((a,b)=> new Date(a.date) - new Date(b.date));
+      
+      return { 
+        time: unique.map(d=>d.date), 
+        temperature_2m_max: unique.map(d=>d.tmax), 
+        temperature_2m_min: unique.map(d=>d.tmin) 
+      };
+    }
+
+    function computeCumulativeGDD(daily, base=10){
+      const out = []; let cum = 0; const today = new Date(fmt(new Date()));
+      if(!daily || !daily.time) return out;
+      for(let i=0;i<daily.time.length;i++){
+        const tMax = daily.temperature_2m_max[i];
+        const tMin = daily.temperature_2m_min[i];
+        if(tMax==null || tMin==null || Number.isNaN(tMax) || Number.isNaN(tMin)) continue;
+        const gdd = Math.max(0, ((tMax + tMin)/2) - base);
+        cum += gdd;
+        out.push({ date: daily.time[i], cumulative: +cum.toFixed(3), isForecast: new Date(daily.time[i]) > today });
+      }
+      return out;
+    }
+
+    // 5-year average series with "reach 1500 GDD if needed"
+    async function historicalAverageSeriesAtLeast(lat, lon, plantingDateStr, selectedEndDateStr, base=10, minTarget=1500, selectedLastGDD=0){
+      const p = new Date(plantingDateStr + 'T00:00:00');
+      const eSel = new Date(selectedEndDateStr + 'T00:00:00');
+      const selectedLenDays = Math.floor((eSel - p) / (1000*60*60*24)) + 1;
+
+      const mustReach1500 = selectedLastGDD < minTarget;
+      const fetchDays = mustReach1500 ? 500 : Math.max(selectedLenDays, 1);
+
+      const currentYear = new Date().getFullYear();
+      const years = [currentYear-5, currentYear-4, currentYear-3, currentYear-2, currentYear-1];
+
+      const perYearSeries = await Promise.all(years.map(async (year)=>{
+        try{
+          const start = new Date(year, p.getMonth(), p.getDate());
+          const end = addDays(start, fetchDays-1);
+          const a = await fetchJSON(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min&start_date=${fmt(start)}&end_date=${fmt(end)}&timezone=auto`);
+          if(!a.daily) return null;
+          const cum = computeCumulativeGDD(a.daily, base).map(d=>d.cumulative);
+          if(mustReach1500){
+            const cut = cum.findIndex(v => v >= minTarget);
+            return (cut !== -1) ? cum.slice(0, cut+1) : cum;
+          }else{
+            return cum.slice(0, selectedLenDays);
+          }
+        }catch{ return null; }
+      }));
+
+      const valid = perYearSeries.filter(s => Array.isArray(s) && s.length>0);
+      if(valid.length===0){
+        return Array(Math.max(selectedLenDays,1)).fill(0);
+      }
+
+      const targetLen = mustReach1500
+        ? Math.max(...valid.map(s=>{
+            const idx = s.findIndex(v=>v>=minTarget);
+            return idx===-1 ? s.length : idx+1;
+          }))
+        : selectedLenDays;
+
+      const avg = [];
+      for(let i=0;i<targetLen;i++){
+        let sum=0, c=0;
+        for(const s of valid){
+          if(s[i]!=null && !Number.isNaN(s[i])){ sum+=s[i]; c++; }
+          else if(i >= s.length && mustReach1500){
+            sum += s[s.length-1]; c++;
+          }
+        }
+        avg.push(c ? sum/c : 0);
+      }
+      return avg;
+    }
+
+    // Date formatting helpers
+    function formatSelected(dStr){
+      const d = new Date(dStr + 'T00:00:00');
+      const month = d.toLocaleString('en-US', { month: 'short' }); // Jun
+      const day = String(d.getDate()).padStart(2, '0');            // 22
+      const year = d.getFullYear();
+      return `${month}-${day}, ${year}`;                           // Jun-22, 2025
+    }
+    function formatHist(dStr){
+      const d = new Date(dStr + 'T00:00:00');
+      const month = d.toLocaleString('en-US', { month: 'long' });  // June
+      const day = d.getDate();
+      return `${month} ${day}`;                                    // June 23
+    }
+
+
+    function drawChart(dailyData, histAvg, plantingDateStr){
+      const canvas = document.getElementById('chart');
+      const ctx = canvas.getContext('2d');
+      if(chartInstance) chartInstance.destroy();
+
+      const actual = dailyData.filter(d => !d.isForecast).map(d => ({ x: d.date, y: d.cumulative }));
+      const forecast = dailyData.filter(d => d.isForecast).map(d => ({ x: d.date, y: d.cumulative }));
+      if(actual.length > 0 && forecast.length > 0) forecast.unshift(actual[actual.length - 1]);
+
+      // Build dates for 5-yr average starting at planting date
+      const histDates = [];
+      const p0 = new Date(plantingDateStr + 'T00:00:00');
+      for(let i=0;i<histAvg.length;i++){ histDates.push(fmt(addDays(p0, i))); }
+      const hist = histDates.map((d, i) => ({ x: d, y: histAvg[i] || 0 }));
+
+
+
+      chartInstance = new Chart(ctx, {
+        type:'line',
+        data:{
+          datasets:[
+            { label:'Current Season', data: actual, borderColor:'#16a34a', backgroundColor:'rgba(22,163,74,.1)', borderWidth:2, tension:.25, pointRadius:0, fill:true },
+            { label:'16-Day Forecast', data: forecast, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.1)', borderWidth:2, borderDash:[3,3], tension:.25, pointRadius:0, fill:true },
+            { label:'5-Year Average', data: hist, borderColor:'#9ca3af', borderDash:[5,5], borderWidth:2, tension:.25, pointRadius:0 }
+          ]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          animation:false,
+          plugins:{ 
+            legend:{ display:true, position:'top' }, 
+            tooltip:{ mode:'index', intersect:false, position:'nearest' } 
+          },
+          scales:{
+            x:{ type:'time', time:{ unit:'day', tooltipFormat:'MMM dd, yyyy' }, title:{ display:true, text:'Date' } },
+            y:{ beginAtZero:true, title:{ display:true, text:'Cumulative GDD (°C day)' } }
+          },
+          interaction:{ mode:'nearest', axis:'x', intersect:false }
+        },
+        plugins:[endDateLinePlugin]
+      });
+
+      return histDates; // for table
+    }
+
+    function buildStageTable(histAvg, histDates, currentVals, currentDates){
+      const tableCard = document.getElementById('stagesTableCard');
+      const tbody = tableCard.querySelector('tbody');
+      tbody.innerHTML = '';
+
+      const stages = [
+        { name: 'Attachment', fn: calculateAttachment },
+        { name: 'Elongation', fn: calculateElongation },
+        { name: 'Emergence',  fn: calculateEmergence  },
+        { name: 'Flowering',  fn: calculateFlowering  }
+      ];
+
+      function firstDateAt(pctFn, series, dates, thr){
+        for(let i=0;i<series.length;i++){
+          if(pctFn(series[i]) >= thr) return dates[i];
+        }
+        return null;
+      }
+
+      stages.forEach(({name, fn})=>{
+        const h5d  = firstDateAt(fn, histAvg,   histDates,   0.05);
+        const h90d = firstDateAt(fn, histAvg,   histDates,   0.90);
+        const c5d  = firstDateAt(fn, currentVals, currentDates, 0.05);
+        const c90d = firstDateAt(fn, currentVals, currentDates, 0.90);
+
+        // 5%
+        const tr1 = document.createElement('tr');
+        tr1.innerHTML = `<td class="stage-cell" rowspan="2">${name}</td>
+                         <td class="progress-cell">5%</td>
+                         <td>${h5d ? formatHist(h5d) : '—'}</td>
+                         <td>${c5d ? formatSelected(c5d) : '—'}</td>
+                         <td>${(name==='Attachment') ? 'First chemigation around this date' : (name==='Flowering' ? 'Field scouting and roguing to prevent seed production' : '')}</td>`;
+        // 90%
+        const tr2 = document.createElement('tr');
+        tr2.innerHTML = `<td class="progress-cell">90%</td>
+                         <td>${h90d ? formatHist(h90d) : '—'}</td>
+                         <td>${c90d ? formatSelected(c90d) : '—'}</td>
+                         <td>${(name==='Attachment') ? 'Final chemigation around this date' : ''}</td>`;
+        tbody.appendChild(tr1);
+        tbody.appendChild(tr2);
+      });
+
+      tableCard.style.display='block';
+    }
+
+    async function calculateGDD(){
+      const plantingDate = document.getElementById('plantingDate').value;
+      const useToday = document.getElementById('useTodayEnd').checked;
+      const selectedEnd = useToday ? todayStr : document.getElementById('endDate').value;
+
+      selectedEndDateForLine = new Date(selectedEnd + 'T00:00:00');
+
+      const errorDiv = document.getElementById('error');
+      const resultDiv = document.getElementById('result');
+      const vizCard = document.getElementById('vizCard');
+      const tableCard = document.getElementById('stagesTableCard');
+
+      errorDiv.style.display='none'; errorDiv.textContent='';
+      resultDiv.style.display='none'; resultDiv.innerHTML='';
+      vizCard.style.display='none';
+      tableCard.style.display='none';
+
+      if(!plantingDate){ errorDiv.textContent='Please select a planting date'; errorDiv.style.display='block'; return; }
+      if(!selectedEnd){ errorDiv.textContent='Please select an end date'; errorDiv.style.display='block'; return; }
+
+      const btn = document.querySelector('.btn-primary');
+      btn.disabled = true; btn.textContent = 'Calculating…';
+
+      try{
+        const today = new Date(fmt(new Date()));
+        const finalEndDate = useToday ? fmt(addDays(today,15)) : selectedEnd;
+
+        
+
+        const daily = await fetchDailyRange(currentLocation.lat, currentLocation.lon, plantingDate, finalEndDate);
+        if(!daily.time || daily.time.length===0) throw new Error('No daily data returned.');
+        
+        const dailyData = computeCumulativeGDD(daily, 10);
+        const cumulative = dailyData.length ? dailyData[dailyData.length-1].cumulative : 0;
+
+        const actualData = dailyData.filter(d => !d.isForecast);
+        const currentGDD = actualData.length ? actualData[actualData.length-1].cumulative : 0;
+        const forecastGDD = cumulative;
+
+        // 5-year average with "reach 1500" rule
+        const histAvg = await historicalAverageSeriesAtLeast(
+          currentLocation.lat, currentLocation.lon, plantingDate, selectedEnd, 10, 1500, cumulative
+        );
+
+        // Result box
+        resultDiv.innerHTML = `
+          <div class="result-box">
+            <div class="result-label">Current GDD</div>
+            <div class="result-value">${currentGDD.toFixed(1)}°C day</div>
+            <div class="info-text"><strong>16-day forecast: ${cumulative.toFixed(1)}°C day</strong></div>
+          </div>`;
+        resultDiv.style.display='block';
+
+        // Gauges (current + forecast)
+        const stagesActual = {
+          attachment: calculateAttachment(currentGDD) * 100,
+          elongation:  calculateElongation(currentGDD) * 100,
+          emergence:   calculateEmergence(currentGDD) * 100,
+          flowering:   calculateFlowering(currentGDD) * 100
+        };
+        const stagesForecast = {
+          attachment: calculateAttachment(forecastGDD) * 100,
+          elongation:  calculateElongation(forecastGDD) * 100,
+          emergence:   calculateEmergence(forecastGDD) * 100,
+          flowering:   calculateFlowering(forecastGDD) * 100
+        };
+
+        createGaugeChart('gaugeAttachment','attachment',stagesActual.attachment,stagesForecast.attachment);
+        createGaugeChart('gaugeElongation','elongation',stagesActual.elongation,stagesForecast.elongation);
+        createGaugeChart('gaugeEmergence','emergence',stagesActual.emergence,stagesForecast.emergence);
+        createGaugeChart('gaugeFlowering','flowering',stagesActual.flowering,stagesForecast.flowering);
+
+        // Plot and get hist dates
+        const histDates = drawChart(dailyData, histAvg, plantingDate);
+        vizCard.style.display='block';
+
+        // Table
+        const currentDates = dailyData.map(d => d.date);
+        const currentVals  = dailyData.map(d => d.cumulative);
+        buildStageTable(histAvg, histDates, currentVals, currentDates);
+
+      }catch(err){
+        errorDiv.textContent = `Error fetching data:\n${err.message}`;
+        errorDiv.style.display='block';
+      } finally {
+        btn.disabled = false; btn.textContent = 'Calculate GDD';
+      }
+    }
+  </script>
+
+</body>
+</html>
