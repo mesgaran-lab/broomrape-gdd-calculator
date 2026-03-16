@@ -1,8 +1,13 @@
 
-# 🌡️ Branched Broomrape GDD Calculator — California Processing Tomato
+# 🌡️ Branched Broomrape Growth Stage and GDD Calculator — California Processing Tomato
 
 An interactive web dashboard for estimating **Growing Degree Day (GDD)** accumulation related to *Branched broomrape (Phelipanche ramosa)* development in California processing tomato.  
 The tool visualizes temperature-driven growth stages, provides short-term forecasts, and compares current season data with 5-year historical averages.
+Prediction of growth stages is based on a Weibull-based model described in the following paper:
+
+Hosseini P, Hanson BD, Fatino M, Mesgaran MB. A growing degree day–based multiphasic model of phenological transitions in branched broomrape (*Phelipanche ramosa*). Weed Science. 2026;74(1):e10. doi:10.1017/wsc.2025.10080
+
+[Read the paper here](https://doi.org/10.1017/wsc.2025.10080) 
 
 ---
 
