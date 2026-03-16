@@ -207,34 +207,71 @@
     }
 
     @media print{
-      body{
+      @page {
+        size: auto;
+        margin: 0.5in;
+      }
+
+      html, body {
         background:#fff !important;
-        padding:0;
+        margin:0 !important;
+        padding:0 !important;
+        height:auto !important;
+        overflow:visible !important;
       }
 
-      body *{
-        visibility:hidden !important;
+      body > .container > *:not(#worksheetCard) {
+        display:none !important;
       }
 
-      #worksheetCard,
-      #worksheetCard *{
+      #worksheetCard {
+        display:block !important;
+        visibility:visible !important;
+        position:static !important;
+        width:100% !important;
+        margin:0 !important;
+        padding:0 !important;
+        box-shadow:none !important;
+        border:none !important;
+        break-inside:avoid !important;
+        page-break-inside:avoid !important;
+      }
+
+      #worksheetCard * {
         visibility:visible !important;
       }
 
-      #worksheetCard{
-        display:block !important;
-        position:absolute;
-        left:0;
-        top:0;
-        width:100%;
-        margin:0;
-        box-shadow:none;
-        border:1px solid #d1d5db;
-        break-inside:avoid;
+      #worksheetCard h2 {
+        margin-bottom:12px !important;
       }
 
-      #worksheetCard table{
-        font-size:12px;
+      #worksheetCard .worksheet-meta,
+      #worksheetCard .worksheet-caveat,
+      #worksheetCard table,
+      #worksheetCard div {
+        break-inside:avoid !important;
+        page-break-inside:avoid !important;
+      }
+
+      #worksheetCard table {
+        width:100% !important;
+        border-collapse:collapse !important;
+        font-size:12px !important;
+      }
+
+      #worksheetCard th,
+      #worksheetCard td {
+        padding:8px 10px !important;
+        border:1px solid #000 !important;
+      }
+
+      #worksheetCard thead tr {
+        background:#fff !important;
+        color:#000 !important;
+      }
+
+      .blank-line {
+        border-bottom:1px solid #000 !important;
       }
     }
 
