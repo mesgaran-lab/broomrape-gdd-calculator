@@ -40,7 +40,7 @@
     .result-box{background:#f0fdf4;border-radius:8px;padding:16px;margin-top:24px}
     .result-value{font-size:36px;font-weight:700;color:#15803d}
     .result-label{font-size:18px;font-weight:600;color:#374151;margin-bottom:8px}
-    
+
     /* Viz: left (chart) | right (gauges) */
     .viz-row{display:grid;grid-template-columns:1.8fr 1fr;gap:24px}
     @media (max-width:1024px){.viz-row{grid-template-columns:1fr}}
@@ -75,8 +75,169 @@
       border-radius: 8px;
     }
 
+    .map-search-wrap{
+      margin-bottom:12px;
+    }
 
-    
+    .map-search-row{
+      display:flex;
+      gap:8px;
+      margin-bottom:8px;
+    }
+
+    .map-search-row input[type=text]{
+      flex:1;
+      padding:10px;
+      border:1px solid #d1d5db;
+      border-radius:6px;
+      font-size:15px;
+    }
+
+    .search-btn{
+      width:auto;
+      min-width:110px;
+      padding:10px 14px;
+      background:#2563eb;
+      color:#fff;
+      border:none;
+      border-radius:6px;
+      font-size:14px;
+      font-weight:600;
+      cursor:pointer;
+      transition:all .2s;
+    }
+
+    .search-btn:hover{background:#1d4ed8}
+    .search-btn:disabled{background:#9ca3af;cursor:not-allowed}
+
+    .search-results{
+      list-style:none;
+      border:1px solid #e5e7eb;
+      border-radius:6px;
+      overflow:hidden;
+      background:#fff;
+      max-height:220px;
+      overflow-y:auto;
+      display:none;
+      margin-bottom:8px;
+    }
+
+    .search-results li{
+      padding:10px 12px;
+      border-bottom:1px solid #e5e7eb;
+      cursor:pointer;
+      font-size:14px;
+      color:#374151;
+    }
+
+    .search-results li:last-child{border-bottom:none}
+    .search-results li:hover{background:#eff6ff}
+
+    .search-status{
+      font-size:13px;
+      color:#6b7280;
+      margin-bottom:8px;
+      min-height:16px;
+    }
+
+    @media (max-width:640px){
+      .map-search-row{flex-direction:column}
+      .search-btn{width:100%}
+    }
+
+    textarea, input[type=text].worksheet-input{
+      width:100%;
+      padding:10px;
+      border:1px solid #d1d5db;
+      border-radius:6px;
+      font-size:16px;
+      margin-bottom:12px;
+      font-family:Arial,Helvetica,sans-serif;
+    }
+
+    .worksheet-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:16px;
+    }
+
+    .worksheet-caveat{
+      background:#fffbeb;
+      border:1px solid #fde68a;
+      color:#92400e;
+      padding:12px;
+      border-radius:6px;
+      margin-bottom:16px;
+      font-size:14px;
+      line-height:1.5;
+    }
+
+    .worksheet-meta{
+      margin-bottom:16px;
+      line-height:1.8;
+      color:#374151;
+      font-size:14px;
+    }
+
+    .blank-line{
+      display:inline-block;
+      min-width:120px;
+      border-bottom:1px solid #9ca3af;
+      height:18px;
+    }
+
+    .print-only{
+      display:none !important;
+    }
+
+    .worksheet-actions{
+      display:block;
+      margin-top:16px;
+    }
+
+    .full-width-btn{
+      width:100%;
+    }
+
+    @media (max-width:640px){
+      .worksheet-grid,
+      .worksheet-actions{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media print{
+      body{
+        background:#fff !important;
+        padding:0;
+      }
+
+      body *{
+        visibility:hidden !important;
+      }
+
+      #worksheetCard,
+      #worksheetCard *{
+        visibility:visible !important;
+      }
+
+      #worksheetCard{
+        display:block !important;
+        position:absolute;
+        left:0;
+        top:0;
+        width:100%;
+        margin:0;
+        box-shadow:none;
+        border:1px solid #d1d5db;
+        break-inside:avoid;
+      }
+
+      #worksheetCard table{
+        font-size:12px;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -86,8 +247,8 @@
   <div class="header-inline">
     <img src="images/logo_tomato_broomrape.png" alt="Tomato and broomrape logo" class="header-logo">
     <div>
-      <h1>Branched Broomrape Growing Degree Day (GDD) Calculator — California Processing Tomato</h1>
-      <p class="subtitle">🌡️ Tracks cumulative GDD since transplanting (Base Temp = 10 °C / 50 °F), including a 16-day forecast and 5-year historical average.</p>
+      <h1>Branched Broomrape Growth Stage and GDD Calculator — California Processing Tomato</h1>
+      <p class="subtitle">🌡️ Tracks cumulative Growing Degree Day (GDD) and predicts developmental stages of branched broomrape (<i>Phelipanche ramosa</i> L.) since transplanting (Base Temp = 10 °C / 50 °F), using observed weather, a 16-day forecast, and 5-year historical averages for dates beyond the forecast horizon.</p>
     </div>
   </div>
 </div>
@@ -102,8 +263,16 @@
     </div>
     <button class="btn btn-secondary" onclick="toggleMap()"><span id="mapBtnText">Show Interactive Map</span></button>
     <div id="mapContainer" style="display:none">
+      <div class="map-search-wrap">
+        <div class="map-search-row">
+          <input type="text" id="addressSearch" placeholder="Search address or place name" />
+          <button type="button" class="search-btn" id="addressSearchBtn" onclick="searchAddress()">Search</button>
+        </div>
+        <div id="searchStatus" class="search-status"></div>
+        <ul id="searchResults" class="search-results"></ul>
+      </div>
       <div id="map"></div>
-      <div class="info-text">Click on the map or drag the marker to select your location</div>
+      <div class="info-text">Search an address, click on the map, or drag the marker to select your location</div>
     </div>
     <div style="border-top:1px solid #e5e7eb;padding-top:16px;margin-top:16px">
       <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:8px">Quick Locations:</div>
@@ -124,7 +293,7 @@
     <input type="date" id="endDate" max=""/>
     <label class="checkbox-label" style="display:flex;align-items:center;font-size:14px;color:#374151;margin-bottom:12px">
       <input type="checkbox" id="useTodayEnd" onchange="toggleEndDate()" checked/>
-      Use today as end date (includes 16-day forecast)
+      Use today as end date (includes up to 16-day forecast)
     </label>
     <button class="btn btn-primary" onclick="calculateGDD()" style="margin-top:16px">Calculate GDD</button>
     <div id="error" class="error" style="display:none"></div>
@@ -141,6 +310,7 @@
       <div style="margin-top:12px;font-size:14px;color:#6b7280">
         <span style="color:#16a34a">━━━</span> Current season
         &nbsp;&nbsp;<span style="color:#f59e0b">╌╌╌</span> 16-day forecast
+        &nbsp;&nbsp;<span style="color:#6366f1">╌╌╌</span> Future from 5-year average
         &nbsp;&nbsp;<span style="color:#9ca3af">╌╌╌</span> 5-year average
         &nbsp;&nbsp;<span style="color:#ef4444">│</span> Selected end date
       </div>
@@ -166,7 +336,7 @@
       </div>
       <div style="font-size:13px;color:#6b7280;text-align:center;margin-top:8px">
         <span style="color:#16a34a">●</span> Current progress
-        &nbsp;&nbsp;<span style="color:#f59e0b">●</span> Forecasted progress
+        &nbsp;&nbsp;<span style="color:#f59e0b">●</span> Projected progress
       </div>
     </div>
   </div>
@@ -188,101 +358,231 @@
   </table>
 </div>
 
+
+<div class="card">
+  <h2>📝 Printable Worksheet</h2>
+  <div class="worksheet-grid">
+    <div>
+      <label for="growerName">Grower / Farm Name</label>
+      <input type="text" id="growerName" class="worksheet-input" placeholder="Optional" />
+    </div>
+    <div>
+      <label for="fieldId">Field Identifier</label>
+      <input type="text" id="fieldId" class="worksheet-input" placeholder="e.g., Field 12A" />
+    </div>
+  </div>
+  <label for="worksheetNotes">Notes</label>
+  <textarea id="worksheetNotes" rows="3" placeholder="Optional notes for record keeping"></textarea>
+  <div class="worksheet-actions no-print">
+    <button class="btn btn-primary" onclick="generateAndPrintWorksheet()">Generate &amp; Print Worksheet</button>
+  </div>
+</div>
+
+<div id="worksheetCard" class="card print-only" style="display:none">
+  <h2>📄 Branched Broomrape Management Worksheet</h2>
+  <div id="worksheetMeta" class="worksheet-meta"></div>
+  <div class="worksheet-caveat">
+    Management date recommendations are based on 5-year average weather data and should be verified within two weeks using current-season weather conditions for improved accuracy.
+  </div>
+  <table id="worksheetTable">
+    <thead>
+      <tr>
+        <th>Stage</th>
+        <th class="progress-cell">Progress</th>
+        <th>Recommended Date</th>
+        <th>Management Action</th>
+        <th>Actual Date</th>
+        <th>Completed By / Notes</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <div style="margin-top:16px;font-size:13px;color:#6b7280">
+    This worksheet is intended as a planning and record-keeping aid.
+  </div>
+</div>
+
   </div>
 
-
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
 
   <script>
     let currentLocation = { lat: 38.5449, lon: -121.7405 };
     let map = null, marker = null, chartInstance = null;
     let gaugeCharts = { attachment: null, elongation: null, emergence: null, flowering: null };
-    let selectedEndDateForLine = null; // for vertical line on chart
-    // let selectedEndDateForLine = null;
+    let selectedEndDateForLine = null;
+    let lastWorksheetData = null;
+
+    const FORECAST_DAYS = 16;
+    const MAX_FUTURE_DAYS = 365;
 
     const endDateLinePlugin = {
-    id: 'endDateLine',
-    afterDatasetsDraw(chart, args, pluginOptions){
-      if(!selectedEndDateForLine) return;
-      const xScale = chart.scales.x;
-      const yScale = chart.scales.y;
-      // Get pixel position of the date on the X-axis
-      const x = xScale.getPixelForValue(selectedEndDateForLine);
-      if (isNaN(x)) return;
-      
-      const ctx = chart.ctx;
-      ctx.save();
-      
-      // Draw the dashed line
-      ctx.setLineDash([6,4]);
-      ctx.strokeStyle = '#ef4444'; // Red color
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x, yScale.top);
-      ctx.lineTo(x, yScale.bottom);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      
-      // Optional: Add a label at the top of the line
-      ctx.fillStyle = '#ef4444';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      const d = new Date(selectedEndDateForLine);
-      const label = d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }); 
+      id: 'endDateLine',
+      afterDatasetsDraw(chart){
+        if(!selectedEndDateForLine) return;
+        const xScale = chart.scales.x;
+        const yScale = chart.scales.y;
+        const x = xScale.getPixelForValue(selectedEndDateForLine);
+        if (isNaN(x)) return;
 
-      // Measure text width
-      const textWidth = ctx.measureText(label).width;
-      const padding = 6; // horizontal padding
-      const boxHeight = 18; // height of the box
-      const boxY = yScale.top + 2; // y position of box
+        const ctx = chart.ctx;
+        ctx.save();
 
-      // Draw filled box
-      ctx.fillStyle = '#ef4444'; // box background color
-      ctx.fillRect(x - textWidth/2 - padding, boxY, textWidth + padding * 2, boxHeight);
+        ctx.setLineDash([6,4]);
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x, yScale.top);
+        ctx.lineTo(x, yScale.bottom);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-      // Draw text on top
-      ctx.fillStyle = '#ffffff'; // white text color
-      ctx.fillText(label, x, yScale.top + 12);
+        ctx.fillStyle = '#ef4444';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        const d = new Date(selectedEndDateForLine);
+        const label = d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
 
-      ctx.restore();
-    }
-  };
+        const textWidth = ctx.measureText(label).width;
+        const padding = 6;
+        const boxHeight = 18;
+        const boxY = yScale.top + 2;
 
-    // Date controls
-    const todayStr = new Date().toISOString().split('T')[0];
-    document.getElementById('plantingDate').max = todayStr;
-    document.getElementById('endDate').max = todayStr;
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(x - textWidth/2 - padding, boxY, textWidth + padding * 2, boxHeight);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(label, x, yScale.top + 12);
+
+        ctx.restore();
+      }
+    };
+
+    const fmt = d => d.toISOString().slice(0,10);
+    const addDays = (d,n)=>{ const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+
+    const today = new Date();
+    const todayStr = fmt(today);
+    const maxSelectableEndDate = fmt(addDays(today, MAX_FUTURE_DAYS));
+
+    document.getElementById('plantingDate').max = maxSelectableEndDate;
+    document.getElementById('endDate').min = todayStr;
+    document.getElementById('endDate').max = maxSelectableEndDate;
     document.getElementById('endDate').value = todayStr;
     document.getElementById('endDate').disabled = true;
+    syncDateBounds();
+
+    let searchDebounceTimer = null;
+    let activeSearchController = null;
+
+    document.getElementById('addressSearch').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchAddress();
+      }
+    });
+
+    document.getElementById('addressSearch').addEventListener('input', (e) => {
+      const query = e.target.value.trim();
+      if(searchDebounceTimer) clearTimeout(searchDebounceTimer);
+
+      if(query.length < 3){
+        clearSearchResults();
+        setSearchStatus(query.length === 0 ? '' : 'Type at least 3 characters to search.');
+        if(activeSearchController) activeSearchController.abort();
+        return;
+      }
+
+      setSearchStatus('Searching suggestions...');
+      searchDebounceTimer = setTimeout(() => {
+        searchAddress(query, true);
+      }, 350);
+    });
+
+    document.addEventListener('click', (e) => {
+      const wrap = document.querySelector('.map-search-wrap');
+      if(wrap && !wrap.contains(e.target)){
+        clearSearchResults();
+      }
+    });
+
+    document.getElementById('plantingDate').addEventListener('change', syncDateBounds);
+    document.getElementById('endDate').addEventListener('change', syncDateBounds);
 
     function toggleEndDate(){
       const checkbox = document.getElementById('useTodayEnd');
       const endDateInput = document.getElementById('endDate');
+      const plantingValue = document.getElementById('plantingDate').value;
+
+      if(checkbox.checked && plantingValue && new Date(todayStr) < new Date(plantingValue)){
+        checkbox.checked = false;
+        endDateInput.disabled = false;
+        endDateInput.value = plantingValue;
+        setSearchStatus('');
+        return;
+      }
+
       endDateInput.disabled = checkbox.checked;
       if(checkbox.checked){
         endDateInput.value = todayStr;
       }
     }
 
+    function syncDateBounds(){
+      const plantingInput = document.getElementById('plantingDate');
+      const endDateInput = document.getElementById('endDate');
+      const plantingValue = plantingInput.value;
+      const checkbox = document.getElementById('useTodayEnd');
+
+      endDateInput.min = plantingValue || todayStr;
+
+      if(plantingValue && endDateInput.value && new Date(endDateInput.value) < new Date(plantingValue)){
+        endDateInput.value = plantingValue;
+      }
+
+      if(checkbox.checked && plantingValue && new Date(todayStr) < new Date(plantingValue)){
+        checkbox.checked = false;
+        endDateInput.disabled = false;
+        endDateInput.value = plantingValue;
+      }
+    }
+
     function toggleMap(){
       const c = document.getElementById('mapContainer');
       const b = document.getElementById('mapBtnText');
-      if(c.style.display==='none'){ c.style.display='block'; b.textContent='Hide Map'; if(!map) initMap(); }
-      else { c.style.display='none'; b.textContent='Show Interactive Map'; }
+      if(c.style.display==='none'){
+        c.style.display='block';
+        b.textContent='Hide Map';
+        if(!map) initMap();
+        setTimeout(() => map.invalidateSize(), 150);
+      }
+      else {
+        c.style.display='none';
+        b.textContent='Show Interactive Map';
+      }
     }
 
     function initMap(){
       map = L.map('map').setView([currentLocation.lat,currentLocation.lon],5);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap contributors', maxZoom:19 }).addTo(map);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        attribution:'© OpenStreetMap contributors',
+        maxZoom:19
+      }).addTo(map);
       marker = L.marker([currentLocation.lat,currentLocation.lon],{draggable:true}).addTo(map);
       marker.bindPopup(`${currentLocation.lat.toFixed(2)}, ${currentLocation.lon.toFixed(2)}`).openPopup();
-      marker.on('dragend', e=>{ const p=e.target.getLatLng(); setLocation(p.lat,p.lng,`${p.lat.toFixed(2)}°, ${p.lng.toFixed(2)}°`); });
-      map.on('click', e=>{ const p=e.latlng; marker.setLatLng(p); setLocation(p.lat,p.lng,`${p.lat.toFixed(2)}°, ${p.lng.toFixed(2)}°`); });
+      marker.on('dragend', async e=>{
+        const p=e.target.getLatLng();
+        const name = await reverseGeocode(p.lat, p.lng);
+        setLocation(p.lat,p.lng,name || `${p.lat.toFixed(2)}°, ${p.lng.toFixed(2)}°`);
+      });
+      map.on('click', async e=>{
+        const p=e.latlng;
+        marker.setLatLng(p);
+        const name = await reverseGeocode(p.lat, p.lng);
+        setLocation(p.lat,p.lng,name || `${p.lat.toFixed(2)}°, ${p.lng.toFixed(2)}°`);
+      });
     }
 
     function setLocation(lat, lon, name){
@@ -290,10 +590,348 @@
       document.getElementById('locationName').textContent = name;
       document.getElementById('lat').textContent = lat.toFixed(4);
       document.getElementById('lon').textContent = lon.toFixed(4);
-      if(marker && map){ marker.setLatLng([lat,lon]); marker.setPopupContent(`${lat.toFixed(2)}, ${lon.toFixed(2)}`).openPopup(); map.setView([lat,lon], map.getZoom()); }
+      if(marker && map){
+        marker.setLatLng([lat,lon]);
+        marker.setPopupContent(`${name}<br>${lat.toFixed(4)}, ${lon.toFixed(4)}`).openPopup();
+        map.setView([lat,lon], Math.max(map.getZoom(), 9));
+      }
     }
 
-    // ---------- Broomrape params ----------
+    function clearSearchResults(){
+      const resultsEl = document.getElementById('searchResults');
+      resultsEl.innerHTML = '';
+      resultsEl.style.display = 'none';
+    }
+
+    function setSearchStatus(message=''){
+      document.getElementById('searchStatus').textContent = message;
+    }
+
+    async function searchAddress(queryOverride = null, isAutocomplete = false){
+      const input = document.getElementById('addressSearch');
+      const btn = document.getElementById('addressSearchBtn');
+      const query = (queryOverride ?? input.value).trim();
+      if(!query){
+        setSearchStatus('Enter an address or place name.');
+        clearSearchResults();
+        return;
+      }
+
+      if(activeSearchController) activeSearchController.abort();
+      activeSearchController = new AbortController();
+
+      btn.disabled = true;
+      setSearchStatus(isAutocomplete ? 'Searching suggestions...' : 'Searching...');
+      if(!isAutocomplete) clearSearchResults();
+
+      try{
+        const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&q=${encodeURIComponent(query)}`;
+        const resp = await fetch(url, {
+          signal: activeSearchController.signal,
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        if(!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+        const results = await resp.json();
+        renderSearchResults(results, isAutocomplete);
+      }catch(err){
+        if(err.name === 'AbortError') return;
+        setSearchStatus(`Address search failed: ${err.message}`);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function renderSearchResults(results, isAutocomplete = false){
+      const resultsEl = document.getElementById('searchResults');
+      const input = document.getElementById('addressSearch');
+      resultsEl.innerHTML = '';
+
+      if(!Array.isArray(results) || results.length === 0){
+        resultsEl.style.display = 'none';
+        setSearchStatus('No matching locations found.');
+        return;
+      }
+
+      results.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item.display_name;
+        li.addEventListener('click', () => {
+          const lat = parseFloat(item.lat);
+          const lon = parseFloat(item.lon);
+          input.value = item.display_name;
+          setLocation(lat, lon, item.display_name);
+          if(!map) initMap();
+          map.setView([lat, lon], 12);
+          clearSearchResults();
+          setSearchStatus('');
+        });
+        resultsEl.appendChild(li);
+      });
+
+      resultsEl.style.display = 'block';
+      setSearchStatus(isAutocomplete ? 'Suggestions found. Select one to update the map and location.' : 'Select a result to update the map and location.');
+    }
+
+    async function reverseGeocode(lat, lon){
+      try{
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`;
+        const resp = await fetch(url, {
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        if(!resp.ok) return null;
+        const data = await resp.json();
+        return data.display_name || null;
+      }catch{
+        return null;
+      }
+    }
+
+    async function fetchJSON(url){
+      const resp = await fetch(url);
+      if(!resp.ok){
+        let msg = `${resp.status} ${resp.statusText}`;
+        try{
+          const t = await resp.text();
+          msg += `\n\n${t}`;
+        }catch(_){ }
+        throw new Error(msg);
+      }
+      return resp.json();
+    }
+
+    function computeCumulativeGDDFromArrays(rows, base=10){
+      let cum = 0;
+      return rows.map(row => {
+        const gdd = Math.max(0, ((row.tmax + row.tmin) / 2) - base);
+        cum += gdd;
+        return {
+          date: row.date,
+          cumulative: +cum.toFixed(3),
+          isForecast: !!row.isForecast,
+          source: row.source || 'observed'
+        };
+      });
+    }
+
+    async function fetchHistoricalDailyAverageByMonthDay(lat, lon, plantingDateStr, endDateStr){
+      const p = new Date(plantingDateStr + 'T00:00:00');
+      const e = new Date(endDateStr + 'T00:00:00');
+      const nDays = Math.max(1, Math.floor((e - p) / (1000*60*60*24)) + 1);
+
+      const currentYear = new Date().getFullYear();
+      const years = [currentYear-5, currentYear-4, currentYear-3, currentYear-2, currentYear-1];
+
+      const perYear = await Promise.all(years.map(async (year) => {
+        try{
+          const start = new Date(year, p.getMonth(), p.getDate());
+          const end = addDays(start, nDays - 1);
+
+          const a = await fetchJSON(
+            `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}` +
+            `&daily=temperature_2m_max,temperature_2m_min` +
+            `&start_date=${fmt(start)}&end_date=${fmt(end)}&timezone=auto`
+          );
+
+          if(!a.daily || !a.daily.time) return null;
+
+          return a.daily.time.map((date, i) => ({
+            monthDay: date.slice(5),
+            tmax: a.daily.temperature_2m_max[i],
+            tmin: a.daily.temperature_2m_min[i]
+          }));
+        }catch{
+          return null;
+        }
+      }));
+
+      const valid = perYear.filter(arr => Array.isArray(arr) && arr.length > 0);
+      if(valid.length === 0) return {};
+
+      const grouped = {};
+      for(const arr of valid){
+        for(const d of arr){
+          if(d.tmax == null || d.tmin == null) continue;
+          if(!grouped[d.monthDay]) grouped[d.monthDay] = { sumMax: 0, sumMin: 0, n: 0 };
+          grouped[d.monthDay].sumMax += d.tmax;
+          grouped[d.monthDay].sumMin += d.tmin;
+          grouped[d.monthDay].n += 1;
+        }
+      }
+
+      const out = {};
+      for(const md of Object.keys(grouped)){
+        out[md] = {
+          tmax: grouped[md].sumMax / grouped[md].n,
+          tmin: grouped[md].sumMin / grouped[md].n
+        };
+      }
+      return out;
+    }
+
+    async function fetchDailyRangeBlended(lat, lon, startDate, selectedEndDate){
+      const start = new Date(startDate + 'T00:00:00');
+      const end = new Date(selectedEndDate + 'T00:00:00');
+      const todayOnly = new Date(fmt(new Date()));
+      const yesterday = addDays(todayOnly, -1);
+      const forecastEnd = addDays(todayOnly, FORECAST_DAYS - 1);
+
+      const rows = [];
+
+      const observedEnd = end < yesterday ? end : yesterday;
+      if(start <= observedEnd){
+        const a = await fetchJSON(
+          `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}` +
+          `&daily=temperature_2m_max,temperature_2m_min` +
+          `&start_date=${fmt(start)}&end_date=${fmt(observedEnd)}&timezone=auto`
+        );
+
+        if(a.daily && a.daily.time){
+          for(let i=0;i<a.daily.time.length;i++){
+            rows.push({
+              date: a.daily.time[i],
+              tmax: a.daily.temperature_2m_max[i],
+              tmin: a.daily.temperature_2m_min[i],
+              isForecast: false,
+              source: 'observed'
+            });
+          }
+        }
+      }
+
+      const forecastStart = start > todayOnly ? start : todayOnly;
+      const usableForecastEnd = end < forecastEnd ? end : forecastEnd;
+
+      if(forecastStart <= usableForecastEnd){
+        const f = await fetchJSON(
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+          `&daily=temperature_2m_max,temperature_2m_min` +
+          `&start_date=${fmt(forecastStart)}&end_date=${fmt(usableForecastEnd)}&timezone=auto`
+        );
+
+        if(f.daily && f.daily.time){
+          for(let i=0;i<f.daily.time.length;i++){
+            rows.push({
+              date: f.daily.time[i],
+              tmax: f.daily.temperature_2m_max[i],
+              tmin: f.daily.temperature_2m_min[i],
+              isForecast: true,
+              source: 'forecast'
+            });
+          }
+        }
+      }
+
+      const avgStart = addDays(forecastEnd, 1);
+      if(end >= avgStart){
+        const histDailyAvg = await fetchHistoricalDailyAverageByMonthDay(
+          lat, lon, startDate, selectedEndDate
+        );
+
+        for(let d = new Date(avgStart); d <= end; d = addDays(d, 1)){
+          const md = fmt(d).slice(5);
+          const avg = histDailyAvg[md];
+          if(!avg) continue;
+
+          rows.push({
+            date: fmt(d),
+            tmax: avg.tmax,
+            tmin: avg.tmin,
+            isForecast: false,
+            source: 'historical-average-future'
+          });
+        }
+      }
+
+      const unique = Object.values(
+        rows.reduce((acc, row) => {
+          acc[row.date] = row;
+          return acc;
+        }, {})
+      ).sort((a,b) => new Date(a.date) - new Date(b.date));
+
+      return unique;
+    }
+
+    function computeCumulativeGDD(dailyRows, base=10){
+      return computeCumulativeGDDFromArrays(dailyRows, base);
+    }
+
+    async function historicalAverageSeriesAtLeast(lat, lon, plantingDateStr, selectedEndDateStr, base=10, minTarget=1500, selectedLastGDD=0){
+      const p = new Date(plantingDateStr + 'T00:00:00');
+      const eSel = new Date(selectedEndDateStr + 'T00:00:00');
+      const selectedLenDays = Math.floor((eSel - p) / (1000*60*60*24)) + 1;
+
+      const mustReach1500 = selectedLastGDD < minTarget;
+      const fetchDays = mustReach1500 ? 500 : Math.max(selectedLenDays, 1);
+
+      const currentYear = new Date().getFullYear();
+      const years = [currentYear-5, currentYear-4, currentYear-3, currentYear-2, currentYear-1];
+
+      const perYearSeries = await Promise.all(years.map(async (year)=>{
+        try{
+          const start = new Date(year, p.getMonth(), p.getDate());
+          const end = addDays(start, fetchDays-1);
+          const a = await fetchJSON(
+            `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}` +
+            `&daily=temperature_2m_max,temperature_2m_min` +
+            `&start_date=${fmt(start)}&end_date=${fmt(end)}&timezone=auto`
+          );
+          if(!a.daily) return null;
+
+          const rows = a.daily.time.map((date, i) => ({
+            date,
+            tmax: a.daily.temperature_2m_max[i],
+            tmin: a.daily.temperature_2m_min[i],
+            isForecast: false,
+            source: 'historical'
+          }));
+
+          const cum = computeCumulativeGDD(rows, base).map(d => d.cumulative);
+
+          if(mustReach1500){
+            const cut = cum.findIndex(v => v >= minTarget);
+            return (cut !== -1) ? cum.slice(0, cut+1) : cum;
+          }else{
+            return cum.slice(0, selectedLenDays);
+          }
+        }catch{
+          return null;
+        }
+      }));
+
+      const valid = perYearSeries.filter(s => Array.isArray(s) && s.length > 0);
+      if(valid.length === 0){
+        return Array(Math.max(selectedLenDays,1)).fill(0);
+      }
+
+      const targetLen = mustReach1500
+        ? Math.max(...valid.map(s => {
+            const idx = s.findIndex(v => v >= minTarget);
+            return idx === -1 ? s.length : idx + 1;
+          }))
+        : selectedLenDays;
+
+      const avg = [];
+      for(let i=0;i<targetLen;i++){
+        let sum = 0, c = 0;
+        for(const s of valid){
+          if(s[i] != null && !Number.isNaN(s[i])){
+            sum += s[i];
+            c++;
+          } else if(i >= s.length && mustReach1500){
+            sum += s[s.length - 1];
+            c++;
+          }
+        }
+        avg.push(c ? sum / c : 0);
+      }
+      return avg;
+    }
+
     const BROOMRAPE_PARAMS = {
       sigma: 573.5,
       lambda: 4.58,
@@ -326,18 +964,18 @@
       return clamp01(1 - Math.exp(-Math.pow(inner, lambda)));
     }
 
-    function createGaugeChart(canvasId, key, currentPercent, forecastPercent) {
+    function createGaugeChart(canvasId, key, currentPercent, projectedPercent) {
       const ctx = document.getElementById(canvasId).getContext('2d');
       if (gaugeCharts[key]) gaugeCharts[key].destroy();
 
       const cur = Math.max(0, Math.min(100, currentPercent));
-      const forc = Math.max(cur, Math.min(100, forecastPercent));
+      const proj = Math.max(cur, Math.min(100, projectedPercent));
 
       gaugeCharts[key] = new Chart(ctx, {
         type: 'doughnut',
         data: {
           datasets: [{
-            data: [cur, forc - cur, 100 - forc],
+            data: [cur, proj - cur, 100 - proj],
             backgroundColor: ['#16a34a', '#f59e0b', '#e5e7eb'],
             borderWidth: 0,
             circumference: 180,
@@ -364,10 +1002,10 @@
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(`${cur.toFixed(0)}%`, width / 2, height / 2 + 16);
-            if (cur < forc) {
+            if (cur < proj) {
               ctx.font = '12px Arial';
               ctx.fillStyle = '#6b7280';
-              ctx.fillText(`(${forc.toFixed(0)}% forecast)`, width / 2, height / 2 + 36);
+              ctx.fillText(`(${proj.toFixed(0)}% projected)`, width / 2, height / 2 + 36);
             }
             ctx.restore();
           }
@@ -375,172 +1013,109 @@
       });
     }
 
-    const fmt = d => d.toISOString().slice(0,10);
-    const addDays = (d,n)=>{ const x=new Date(d); x.setDate(x.getDate()+n); return x; };
-
-    async function fetchJSON(url){
-      const resp = await fetch(url);
-      if(!resp.ok){
-        let msg = `${resp.status} ${resp.statusText}`;
-        try{ const t = await resp.text(); msg += `\n\n${t}`; }catch(_){}
-        throw new Error(msg);
-      }
-      return resp.json();
-    }
-
-    async function fetchDailyRange(lat, lon, startDate, endDate){
-      const tz = 'auto';
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const today = new Date(fmt(new Date()));
-      const yesterday = addDays(today,-1);
-
-      let times = [], tmax = [], tmin = [];
-
-      // Past (Archive)
-      const pastEnd = end < yesterday ? end : yesterday;
-      if(start <= pastEnd){
-        const a = await fetchJSON(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min&start_date=${fmt(start)}&end_date=${fmt(pastEnd)}&timezone=${tz}`);
-        if(a.daily){ times.push(...a.daily.time); tmax.push(...a.daily.temperature_2m_max); tmin.push(...a.daily.temperature_2m_min); }
-      }
-
-      // Present+Future (Forecast)
-      const futStart = start > today ? start : today;
-      if(futStart <= end){
-        const f = await fetchJSON(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min&start_date=${fmt(futStart)}&end_date=${fmt(end)}&timezone=${tz}`);
-        if(f.daily){ times.push(...f.daily.time); tmax.push(...f.daily.temperature_2m_max); tmin.push(...f.daily.temperature_2m_min); }
-      }
-
-      // Deduplicate and sort
-      const merged = [];
-      for (let i = 0; i < times.length; i++) merged.push({ date: times[i], tmax: tmax[i], tmin: tmin[i] });
-      const unique = Object.values(merged.reduce((acc, d) => { acc[d.date] = d; return acc; }, {}));
-      unique.sort((a,b)=> new Date(a.date) - new Date(b.date));
-      
-      return { 
-        time: unique.map(d=>d.date), 
-        temperature_2m_max: unique.map(d=>d.tmax), 
-        temperature_2m_min: unique.map(d=>d.tmin) 
-      };
-    }
-
-    function computeCumulativeGDD(daily, base=10){
-      const out = []; let cum = 0; const today = new Date(fmt(new Date()));
-      if(!daily || !daily.time) return out;
-      for(let i=0;i<daily.time.length;i++){
-        const tMax = daily.temperature_2m_max[i];
-        const tMin = daily.temperature_2m_min[i];
-        if(tMax==null || tMin==null || Number.isNaN(tMax) || Number.isNaN(tMin)) continue;
-        const gdd = Math.max(0, ((tMax + tMin)/2) - base);
-        cum += gdd;
-        out.push({ date: daily.time[i], cumulative: +cum.toFixed(3), isForecast: new Date(daily.time[i]) > today });
-      }
-      return out;
-    }
-
-    // 5-year average series with "reach 1500 GDD if needed"
-    async function historicalAverageSeriesAtLeast(lat, lon, plantingDateStr, selectedEndDateStr, base=10, minTarget=1500, selectedLastGDD=0){
-      const p = new Date(plantingDateStr + 'T00:00:00');
-      const eSel = new Date(selectedEndDateStr + 'T00:00:00');
-      const selectedLenDays = Math.floor((eSel - p) / (1000*60*60*24)) + 1;
-
-      const mustReach1500 = selectedLastGDD < minTarget;
-      const fetchDays = mustReach1500 ? 500 : Math.max(selectedLenDays, 1);
-
-      const currentYear = new Date().getFullYear();
-      const years = [currentYear-5, currentYear-4, currentYear-3, currentYear-2, currentYear-1];
-
-      const perYearSeries = await Promise.all(years.map(async (year)=>{
-        try{
-          const start = new Date(year, p.getMonth(), p.getDate());
-          const end = addDays(start, fetchDays-1);
-          const a = await fetchJSON(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min&start_date=${fmt(start)}&end_date=${fmt(end)}&timezone=auto`);
-          if(!a.daily) return null;
-          const cum = computeCumulativeGDD(a.daily, base).map(d=>d.cumulative);
-          if(mustReach1500){
-            const cut = cum.findIndex(v => v >= minTarget);
-            return (cut !== -1) ? cum.slice(0, cut+1) : cum;
-          }else{
-            return cum.slice(0, selectedLenDays);
-          }
-        }catch{ return null; }
-      }));
-
-      const valid = perYearSeries.filter(s => Array.isArray(s) && s.length>0);
-      if(valid.length===0){
-        return Array(Math.max(selectedLenDays,1)).fill(0);
-      }
-
-      const targetLen = mustReach1500
-        ? Math.max(...valid.map(s=>{
-            const idx = s.findIndex(v=>v>=minTarget);
-            return idx===-1 ? s.length : idx+1;
-          }))
-        : selectedLenDays;
-
-      const avg = [];
-      for(let i=0;i<targetLen;i++){
-        let sum=0, c=0;
-        for(const s of valid){
-          if(s[i]!=null && !Number.isNaN(s[i])){ sum+=s[i]; c++; }
-          else if(i >= s.length && mustReach1500){
-            sum += s[s.length-1]; c++;
-          }
-        }
-        avg.push(c ? sum/c : 0);
-      }
-      return avg;
-    }
-
-    // Date formatting helpers
     function formatSelected(dStr){
       const d = new Date(dStr + 'T00:00:00');
-      const month = d.toLocaleString('en-US', { month: 'short' }); // Jun
-      const day = String(d.getDate()).padStart(2, '0');            // 22
+      const month = d.toLocaleString('en-US', { month: 'short' });
+      const day = String(d.getDate()).padStart(2, '0');
       const year = d.getFullYear();
-      return `${month}-${day}, ${year}`;                           // Jun-22, 2025
-    }
-    function formatHist(dStr){
-      const d = new Date(dStr + 'T00:00:00');
-      const month = d.toLocaleString('en-US', { month: 'long' });  // June
-      const day = d.getDate();
-      return `${month} ${day}`;                                    // June 23
+      return `${month}-${day}, ${year}`;
     }
 
+    function formatHist(dStr){
+      const d = new Date(dStr + 'T00:00:00');
+      const month = d.toLocaleString('en-US', { month: 'long' });
+      const day = d.getDate();
+      return `${month} ${day}`;
+    }
 
     function drawChart(dailyData, histAvg, plantingDateStr){
       const canvas = document.getElementById('chart');
       const ctx = canvas.getContext('2d');
       if(chartInstance) chartInstance.destroy();
 
-      const actual = dailyData.filter(d => !d.isForecast).map(d => ({ x: d.date, y: d.cumulative }));
-      const forecast = dailyData.filter(d => d.isForecast).map(d => ({ x: d.date, y: d.cumulative }));
-      if(actual.length > 0 && forecast.length > 0) forecast.unshift(actual[actual.length - 1]);
+      const actual = dailyData
+        .filter(d => d.source === 'observed')
+        .map(d => ({ x: d.date, y: d.cumulative }));
 
-      // Build dates for 5-yr average starting at planting date
+      const forecast = dailyData
+        .filter(d => d.source === 'forecast')
+        .map(d => ({ x: d.date, y: d.cumulative }));
+
+      const historicalFuture = dailyData
+        .filter(d => d.source === 'historical-average-future')
+        .map(d => ({ x: d.date, y: d.cumulative }));
+
+      if(actual.length > 0 && forecast.length > 0){
+        forecast.unshift(actual[actual.length - 1]);
+      }
+
+      if(forecast.length > 0 && historicalFuture.length > 0){
+        historicalFuture.unshift(forecast[forecast.length - 1]);
+      } else if(actual.length > 0 && historicalFuture.length > 0){
+        historicalFuture.unshift(actual[actual.length - 1]);
+      }
+
       const histDates = [];
       const p0 = new Date(plantingDateStr + 'T00:00:00');
-      for(let i=0;i<histAvg.length;i++){ histDates.push(fmt(addDays(p0, i))); }
+      for(let i=0;i<histAvg.length;i++){
+        histDates.push(fmt(addDays(p0, i)));
+      }
       const hist = histDates.map((d, i) => ({ x: d, y: histAvg[i] || 0 }));
-
-
 
       chartInstance = new Chart(ctx, {
         type:'line',
         data:{
           datasets:[
-            { label:'Current Season', data: actual, borderColor:'#16a34a', backgroundColor:'rgba(22,163,74,.1)', borderWidth:2, tension:.25, pointRadius:0, fill:true },
-            { label:'16-Day Forecast', data: forecast, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.1)', borderWidth:2, borderDash:[3,3], tension:.25, pointRadius:0, fill:true },
-            { label:'5-Year Average', data: hist, borderColor:'#9ca3af', borderDash:[5,5], borderWidth:2, tension:.25, pointRadius:0 }
+            {
+              label:'Current Season',
+              data: actual,
+              borderColor:'#16a34a',
+              backgroundColor:'rgba(22,163,74,.1)',
+              borderWidth:2,
+              tension:.25,
+              pointRadius:0,
+              fill:true
+            },
+            {
+              label:'16-Day Forecast',
+              data: forecast,
+              borderColor:'#f59e0b',
+              backgroundColor:'rgba(245,158,11,.1)',
+              borderWidth:2,
+              borderDash:[3,3],
+              tension:.25,
+              pointRadius:0,
+              fill:true
+            },
+            {
+              label:'Future from 5-Year Average',
+              data: historicalFuture,
+              borderColor:'#6366f1',
+              backgroundColor:'rgba(99,102,241,.08)',
+              borderWidth:2,
+              borderDash:[8,4],
+              tension:.25,
+              pointRadius:0,
+              fill:false
+            },
+            {
+              label:'5-Year Average',
+              data: hist,
+              borderColor:'#9ca3af',
+              borderDash:[5,5],
+              borderWidth:2,
+              tension:.25,
+              pointRadius:0
+            }
           ]
         },
         options:{
           responsive:true,
           maintainAspectRatio:false,
           animation:false,
-          plugins:{ 
-            legend:{ display:true, position:'top' }, 
-            tooltip:{ mode:'index', intersect:false, position:'nearest' } 
+          plugins:{
+            legend:{ display:true, position:'top' },
+            tooltip:{ mode:'index', intersect:false, position:'nearest' }
           },
           scales:{
             x:{ type:'time', time:{ unit:'day', tooltipFormat:'MMM dd, yyyy' }, title:{ display:true, text:'Date' } },
@@ -551,20 +1126,13 @@
         plugins:[endDateLinePlugin]
       });
 
-      return histDates; // for table
+      return histDates;
     }
 
-    function buildStageTable(histAvg, histDates, currentVals, currentDates){
+    function buildStageTable(histAvg, histDates, currentVals, currentDates, plantingDate){
       const tableCard = document.getElementById('stagesTableCard');
       const tbody = tableCard.querySelector('tbody');
       tbody.innerHTML = '';
-
-      const stages = [
-        { name: 'Attachment', fn: calculateAttachment },
-        { name: 'Elongation', fn: calculateElongation },
-        { name: 'Emergence',  fn: calculateEmergence  },
-        { name: 'Flowering',  fn: calculateFlowering  }
-      ];
 
       function firstDateAt(pctFn, series, dates, thr){
         for(let i=0;i<series.length;i++){
@@ -573,33 +1141,237 @@
         return null;
       }
 
-      stages.forEach(({name, fn})=>{
-        const h5d  = firstDateAt(fn, histAvg,   histDates,   0.05);
-        const h90d = firstDateAt(fn, histAvg,   histDates,   0.90);
-        const c5d  = firstDateAt(fn, currentVals, currentDates, 0.05);
-        const c90d = firstDateAt(fn, currentVals, currentDates, 0.90);
+      function normalizeDateString(d){
+        if(!d) return null;
+        if(typeof d === 'string'){
+          if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+          const parsed = new Date(d);
+          if(!isNaN(parsed)) return fmt(parsed);
+          return null;
+        }
+        const parsed = new Date(d);
+        return isNaN(parsed) ? null : fmt(parsed);
+      }
 
-        // 5%
-        const tr1 = document.createElement('tr');
-        tr1.innerHTML = `<td class="stage-cell" rowspan="2">${name}</td>
-                         <td class="progress-cell">5%</td>
-                         <td>${h5d ? formatHist(h5d) : '—'}</td>
-                         <td>${c5d ? formatSelected(c5d) : '—'}</td>
-                         <td>${(name==='Attachment') ? 'First chemigation around this date' : (name==='Flowering' ? 'Field scouting and roguing to prevent seed production' : '')}</td>`;
-        // 90%
-        const tr2 = document.createElement('tr');
-        tr2.innerHTML = `<td class="progress-cell">90%</td>
-                         <td>${h90d ? formatHist(h90d) : '—'}</td>
-                         <td>${c90d ? formatSelected(c90d) : '—'}</td>
-                         <td>${(name==='Attachment') ? 'Final chemigation around this date' : ''}</td>`;
-        tbody.appendChild(tr1);
-        tbody.appendChild(tr2);
-      });
+      function appendRow(stage, progress, histDate, selectedDate, comment, rowSpan = null){
+        const tr = document.createElement('tr');
+        const hasStage = !!stage;
+        const stageCell = hasStage
+          ? (rowSpan ? `<td class="stage-cell" rowspan="${rowSpan}">${stage}</td>` : `<td class="stage-cell">${stage}</td>`)
+          : '';
+        const safeHistDate = normalizeDateString(histDate);
+        const safeSelectedDate = normalizeDateString(selectedDate);
+        tr.innerHTML = `${stageCell}
+                        <td class="progress-cell">${progress}</td>
+                        <td>${safeHistDate ? formatHist(safeHistDate) : '—'}</td>
+                        <td>${safeSelectedDate ? formatSelected(safeSelectedDate) : '—'}</td>
+                        <td>${comment || '—'}</td>`;
+        tbody.appendChild(tr);
+      }
+
+      const safePlantingDate = normalizeDateString(plantingDate);
+      appendRow('Transplanting', '—', safePlantingDate, safePlantingDate, 'User-entered transplant date');
+
+      const attachment5 = firstDateAt(calculateAttachment, histAvg, histDates, 0.05);
+      const attachment50 = firstDateAt(calculateAttachment, histAvg, histDates, 0.50);
+      const attachment90 = firstDateAt(calculateAttachment, histAvg, histDates, 0.90);
+      const attachment5Sel = firstDateAt(calculateAttachment, currentVals, currentDates, 0.05);
+      const attachment50Sel = firstDateAt(calculateAttachment, currentVals, currentDates, 0.50);
+      const attachment90Sel = firstDateAt(calculateAttachment, currentVals, currentDates, 0.90);
+
+      appendRow('Attachment', '5%', attachment5, attachment5Sel, 'First chemigation around this date', 3);
+      appendRow('', '50%', attachment50, attachment50Sel, 'Second chemigation around this date');
+      appendRow('', '90%', attachment90, attachment90Sel, 'Final chemigation around this date');
+
+      const elongation5 = firstDateAt(calculateElongation, histAvg, histDates, 0.05);
+      const elongation90 = firstDateAt(calculateElongation, histAvg, histDates, 0.90);
+      const elongation5Sel = firstDateAt(calculateElongation, currentVals, currentDates, 0.05);
+      const elongation90Sel = firstDateAt(calculateElongation, currentVals, currentDates, 0.90);
+
+      appendRow('Elongation', '5%', elongation5, elongation5Sel, '—', 2);
+      appendRow('', '90%', elongation90, elongation90Sel, '—');
+
+      const emergence5 = firstDateAt(calculateEmergence, histAvg, histDates, 0.05);
+      const emergence90 = firstDateAt(calculateEmergence, histAvg, histDates, 0.90);
+      const emergence5Sel = firstDateAt(calculateEmergence, currentVals, currentDates, 0.05);
+      const emergence90Sel = firstDateAt(calculateEmergence, currentVals, currentDates, 0.90);
+
+      appendRow('Emergence', '5%', emergence5, emergence5Sel, 'Begin scouting around this date', 2);
+      appendRow('', '90%', emergence90, emergence90Sel, 'Complete second rogueing if broomrape is present');
+
+      const flowering5 = firstDateAt(calculateFlowering, histAvg, histDates, 0.05);
+      const flowering90 = firstDateAt(calculateFlowering, histAvg, histDates, 0.90);
+      const flowering5Sel = firstDateAt(calculateFlowering, currentVals, currentDates, 0.05);
+      const flowering90Sel = firstDateAt(calculateFlowering, currentVals, currentDates, 0.90);
+
+      appendRow('Flowering', '5%', flowering5, flowering5Sel, 'Rogue field within 7 days of this date', 2);
+      appendRow('', '90%', flowering90, flowering90Sel, 'Complete 3rd rogueing if broomrape is still present');
 
       tableCard.style.display='block';
     }
 
-    async function calculateGDD(){
+
+    function firstDateAt(pctFn, series, dates, thr){
+      for(let i=0;i<series.length;i++){
+        if(pctFn(series[i]) >= thr) return dates[i];
+      }
+      return null;
+    }
+
+    function normalizeDateString(d){
+      if(!d) return null;
+      if(typeof d === 'string'){
+        if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+        const parsed = new Date(d);
+        if(!isNaN(parsed)) return fmt(parsed);
+        return null;
+      }
+      const parsed = new Date(d);
+      return isNaN(parsed) ? null : fmt(parsed);
+    }
+
+    function buildWorksheetTable(histAvg, histDates, plantingDate){
+      const worksheetCard = document.getElementById('worksheetCard');
+      const worksheetBody = document.querySelector('#worksheetTable tbody');
+      const worksheetMeta = document.getElementById('worksheetMeta');
+
+      worksheetBody.innerHTML = '';
+
+      const growerName = document.getElementById('growerName')?.value?.trim() || '—';
+      const fieldId = document.getElementById('fieldId')?.value?.trim() || '—';
+      const notes = document.getElementById('worksheetNotes')?.value?.trim() || '—';
+      const locationName = document.getElementById('locationName').textContent || '—';
+      const lat = document.getElementById('lat').textContent || '—';
+      const lon = document.getElementById('lon').textContent || '—';
+      const safePlantingDate = normalizeDateString(plantingDate);
+
+      worksheetMeta.innerHTML = `
+        <strong>Grower / Farm:</strong> ${growerName}<br>
+        <strong>Field Identifier:</strong> ${fieldId}<br>
+        <strong>Location:</strong> ${locationName}<br>
+        <strong>Coordinates:</strong> ${lat}, ${lon}<br>
+        <strong>Target Transplanting Date:</strong> ${safePlantingDate ? formatSelected(safePlantingDate) : '—'}<br>
+        <strong>Notes:</strong> ${notes}
+      `;
+
+      const actions = [
+        {
+          stage: 'Transplanting',
+          progress: '—',
+          date: safePlantingDate,
+          action: 'User-entered transplant date'
+        },
+        {
+          stage: 'Attachment',
+          progress: '5%',
+          date: firstDateAt(calculateAttachment, histAvg, histDates, 0.05),
+          action: 'First chemigation around this date'
+        },
+        {
+          stage: 'Attachment',
+          progress: '50%',
+          date: firstDateAt(calculateAttachment, histAvg, histDates, 0.50),
+          action: 'Second chemigation around this date'
+        },
+        {
+          stage: 'Attachment',
+          progress: '90%',
+          date: firstDateAt(calculateAttachment, histAvg, histDates, 0.90),
+          action: 'Final chemigation around this date'
+        },
+        {
+          stage: 'Elongation',
+          progress: '5%',
+          date: firstDateAt(calculateElongation, histAvg, histDates, 0.05),
+          action: '—'
+        },
+        {
+          stage: 'Elongation',
+          progress: '90%',
+          date: firstDateAt(calculateElongation, histAvg, histDates, 0.90),
+          action: '—'
+        },
+        {
+          stage: 'Emergence',
+          progress: '5%',
+          date: firstDateAt(calculateEmergence, histAvg, histDates, 0.05),
+          action: 'Begin scouting around this date'
+        },
+        {
+          stage: 'Emergence',
+          progress: '90%',
+          date: firstDateAt(calculateEmergence, histAvg, histDates, 0.90),
+          action: 'Complete second rogueing if broomrape is present'
+        },
+        {
+          stage: 'Flowering',
+          progress: '5%',
+          date: firstDateAt(calculateFlowering, histAvg, histDates, 0.05),
+          action: 'Rogue field within 7 days of this date'
+        },
+        {
+          stage: 'Flowering',
+          progress: '90%',
+          date: firstDateAt(calculateFlowering, histAvg, histDates, 0.90),
+          action: 'Complete 3rd rogueing if broomrape is still present'
+        }
+      ];
+
+      actions.forEach(item => {
+        const tr = document.createElement('tr');
+        const safeDate = normalizeDateString(item.date);
+        tr.innerHTML = `
+          <td>${item.stage}</td>
+          <td class="progress-cell">${item.progress}</td>
+          <td>${safeDate ? formatHist(safeDate) : '—'}</td>
+          <td>${item.action}</td>
+          <td><span class="blank-line"></span></td>
+          <td><span class="blank-line" style="min-width:180px"></span></td>
+        `;
+        worksheetBody.appendChild(tr);
+      });
+
+      worksheetCard.style.display = 'block';
+    }
+
+    function generateWorksheet(){
+      const errorDiv = document.getElementById('error');
+      const plantingDate = document.getElementById('plantingDate').value;
+      if(!lastWorksheetData){
+        if(!plantingDate){
+          errorDiv.textContent='Please select a transplanting date and calculate first.';
+          errorDiv.style.display='block';
+          return false;
+        }
+        errorDiv.textContent='Please click Calculate GDD first.';
+        errorDiv.style.display='block';
+        return false;
+      }
+      buildWorksheetTable(lastWorksheetData.histAvg, lastWorksheetData.histDates, lastWorksheetData.plantingDate);
+      return true;
+    }
+
+    function generateAndPrintWorksheet(){
+      const ok = generateWorksheet();
+      if(!ok) return;
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+          document.getElementById('worksheetCard').style.display = 'none';
+        }, 300);
+      }, 250);
+    }
+
+
+
+    window.addEventListener('afterprint', () => {
+      const worksheetCard = document.getElementById('worksheetCard');
+      if(worksheetCard){
+        worksheetCard.style.display = 'none';
+      }
+    });
+
+    async function calculateGDD(skipWorksheetBuild = false){
       const plantingDate = document.getElementById('plantingDate').value;
       const useToday = document.getElementById('useTodayEnd').checked;
       const selectedEnd = useToday ? todayStr : document.getElementById('endDate').value;
@@ -611,80 +1383,116 @@
       const vizCard = document.getElementById('vizCard');
       const tableCard = document.getElementById('stagesTableCard');
 
-      errorDiv.style.display='none'; errorDiv.textContent='';
-      resultDiv.style.display='none'; resultDiv.innerHTML='';
+      errorDiv.style.display='none';
+      errorDiv.textContent='';
+      resultDiv.style.display='none';
+      resultDiv.innerHTML='';
       vizCard.style.display='none';
       tableCard.style.display='none';
 
-      if(!plantingDate){ errorDiv.textContent='Please select a planting date'; errorDiv.style.display='block'; return; }
-      if(!selectedEnd){ errorDiv.textContent='Please select an end date'; errorDiv.style.display='block'; return; }
+      if(!plantingDate){
+        errorDiv.textContent='Please select a planting date';
+        errorDiv.style.display='block';
+        return;
+      }
+
+      if(!selectedEnd){
+        errorDiv.textContent='Please select an end date';
+        errorDiv.style.display='block';
+        return;
+      }
+
+      if(new Date(selectedEnd) < new Date(plantingDate)){
+        errorDiv.textContent='End date must be on or after transplanting date';
+        errorDiv.style.display='block';
+        return;
+      }
 
       const btn = document.querySelector('.btn-primary');
-      btn.disabled = true; btn.textContent = 'Calculating…';
+      btn.disabled = true;
+      btn.textContent = 'Calculating…';
 
       try{
-        const today = new Date(fmt(new Date()));
-        const finalEndDate = useToday ? fmt(addDays(today,15)) : selectedEnd;
-
-        
-
-        const daily = await fetchDailyRange(currentLocation.lat, currentLocation.lon, plantingDate, finalEndDate);
-        if(!daily.time || daily.time.length===0) throw new Error('No daily data returned.');
-        
-        const dailyData = computeCumulativeGDD(daily, 10);
-        const cumulative = dailyData.length ? dailyData[dailyData.length-1].cumulative : 0;
-
-        const actualData = dailyData.filter(d => !d.isForecast);
-        const currentGDD = actualData.length ? actualData[actualData.length-1].cumulative : 0;
-        const forecastGDD = cumulative;
-
-        // 5-year average with "reach 1500" rule
-        const histAvg = await historicalAverageSeriesAtLeast(
-          currentLocation.lat, currentLocation.lon, plantingDate, selectedEnd, 10, 1500, cumulative
+        const blendedRows = await fetchDailyRangeBlended(
+          currentLocation.lat,
+          currentLocation.lon,
+          plantingDate,
+          selectedEnd
         );
 
-        // Result box
+        if(!blendedRows || blendedRows.length === 0){
+          throw new Error('No daily data returned.');
+        }
+
+        const dailyData = computeCumulativeGDD(blendedRows, 10);
+
+        const observedData = dailyData.filter(d => d.source === 'observed');
+        const forecastData = dailyData.filter(d => d.source === 'forecast');
+
+        const currentGDD = observedData.length
+          ? observedData[observedData.length - 1].cumulative
+          : 0;
+
+        const forecastGDD = forecastData.length
+          ? forecastData[forecastData.length - 1].cumulative
+          : currentGDD;
+
+        const selectedRangeGDD = dailyData[dailyData.length - 1].cumulative;
+
+        const histAvg = await historicalAverageSeriesAtLeast(
+          currentLocation.lat,
+          currentLocation.lon,
+          plantingDate,
+          selectedEnd,
+          10,
+          1500,
+          selectedRangeGDD
+        );
+
         resultDiv.innerHTML = `
           <div class="result-box">
-            <div class="result-label">Current GDD</div>
-            <div class="result-value">${currentGDD.toFixed(1)}°C day</div>
-            <div class="info-text"><strong>16-day forecast: ${cumulative.toFixed(1)}°C day</strong></div>
+            <div class="result-label">GDD Summary</div>
+            <div class="result-value">${selectedRangeGDD.toFixed(1)}°C day</div>
+            <div class="info-text"><strong>Observed through today:</strong> ${currentGDD.toFixed(1)}°C day</div>
+            <div class="info-text"><strong>Observed + forecast (up to 16 days):</strong> ${forecastGDD.toFixed(1)}°C day</div>
+            <div class="info-text"><strong>Beyond forecast horizon:</strong> calculated from 5-year average temperature</div>
           </div>`;
         resultDiv.style.display='block';
 
-        // Gauges (current + forecast)
         const stagesActual = {
           attachment: calculateAttachment(currentGDD) * 100,
-          elongation:  calculateElongation(currentGDD) * 100,
-          emergence:   calculateEmergence(currentGDD) * 100,
-          flowering:   calculateFlowering(currentGDD) * 100
-        };
-        const stagesForecast = {
-          attachment: calculateAttachment(forecastGDD) * 100,
-          elongation:  calculateElongation(forecastGDD) * 100,
-          emergence:   calculateEmergence(forecastGDD) * 100,
-          flowering:   calculateFlowering(forecastGDD) * 100
+          elongation: calculateElongation(currentGDD) * 100,
+          emergence:  calculateEmergence(currentGDD) * 100,
+          flowering:  calculateFlowering(currentGDD) * 100
         };
 
-        createGaugeChart('gaugeAttachment','attachment',stagesActual.attachment,stagesForecast.attachment);
-        createGaugeChart('gaugeElongation','elongation',stagesActual.elongation,stagesForecast.elongation);
-        createGaugeChart('gaugeEmergence','emergence',stagesActual.emergence,stagesForecast.emergence);
-        createGaugeChart('gaugeFlowering','flowering',stagesActual.flowering,stagesForecast.flowering);
+        const stagesProjected = {
+          attachment: calculateAttachment(selectedRangeGDD) * 100,
+          elongation: calculateElongation(selectedRangeGDD) * 100,
+          emergence:  calculateEmergence(selectedRangeGDD) * 100,
+          flowering:  calculateFlowering(selectedRangeGDD) * 100
+        };
 
-        // Plot and get hist dates
+        createGaugeChart('gaugeAttachment','attachment',stagesActual.attachment,stagesProjected.attachment);
+        createGaugeChart('gaugeElongation','elongation',stagesActual.elongation,stagesProjected.elongation);
+        createGaugeChart('gaugeEmergence','emergence',stagesActual.emergence,stagesProjected.emergence);
+        createGaugeChart('gaugeFlowering','flowering',stagesActual.flowering,stagesProjected.flowering);
+
         const histDates = drawChart(dailyData, histAvg, plantingDate);
         vizCard.style.display='block';
 
-        // Table
         const currentDates = dailyData.map(d => d.date);
-        const currentVals  = dailyData.map(d => d.cumulative);
-        buildStageTable(histAvg, histDates, currentVals, currentDates);
+        const currentVals = dailyData.map(d => d.cumulative);
+        buildStageTable(histAvg, histDates, currentVals, currentDates, plantingDate);
+        lastWorksheetData = { histAvg, histDates, plantingDate };
+        document.getElementById('worksheetCard').style.display = 'none';
 
       }catch(err){
         errorDiv.textContent = `Error fetching data:\n${err.message}`;
         errorDiv.style.display='block';
       } finally {
-        btn.disabled = false; btn.textContent = 'Calculate GDD';
+        btn.disabled = false;
+        btn.textContent = 'Calculate GDD';
       }
     }
   </script>
