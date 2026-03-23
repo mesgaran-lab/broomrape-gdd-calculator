@@ -384,11 +384,9 @@
   <table id="stagesTable">
     <thead>
       <tr>
-        <th>Stage</th>
-        <th class="progress-cell">Progress</th>
+        <th>Management Actions</th>
         <th>5-Year Average</th>
         <th>Selected Date Range</th>
-        <th>Comments</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -411,32 +409,31 @@
   <label for="worksheetNotes">Notes</label>
   <textarea id="worksheetNotes" rows="3" placeholder="Optional notes for record keeping"></textarea>
   <div class="worksheet-actions no-print">
-    <button class="btn btn-primary" onclick="generateAndPrintWorksheet()">Generate &amp; Print Worksheet</button>
+    <button class="btn btn-primary" onclick="generateAndPrintWorksheet()">Generate &amp; Print Anonymous Worksheet</button>
   </div>
 </div>
 
 <div id="worksheetCard" class="card print-only" style="display:none">
-  <h2>📄 Branched Broomrape Management Worksheet</h2>
+  <h2>📄 Branched Broomrape Anonymous Management Worksheet</h2>
   <div id="worksheetMeta" class="worksheet-meta"></div>
   <div class="worksheet-caveat">
-    Management date recommendations are based on 5-year average weather data and should be verified within two weeks using current-season weather conditions for improved accuracy.
+    <ul style="margin:0; padding-left:20px;">
+      <li>This worksheet is intended as a planning and record keeping aid for growers. These data are not saved or stored anywhere.</li>
+      <li>Management date recommendations projected more than two weeks in advance are based on the 5-year average weather data. For improved accuracy with current-season weather data, management action dates should be updated and verified within two weeks of the target date.</li>
+      <li>* Dates marked with an asterisk are based on 5-year average weather data rather than the user-selected date range, because predictions are only provided for the next two weeks.</li>
+    </ul>
   </div>
   <table id="worksheetTable">
     <thead>
       <tr>
-        <th>Stage</th>
-        <th class="progress-cell">Progress</th>
-        <th>Recommended Date</th>
         <th>Management Action</th>
-        <th>Actual Date</th>
-        <th>Completed By / Notes</th>
+        <th>Recommended Date (based on user-entered date range)</th>
+        <th>Actual Date Completed</th>
+        <th>Notes</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
-  <div style="margin-top:16px;font-size:13px;color:#6b7280">
-    This worksheet is intended as a planning and record-keeping aid.
-  </div>
 </div>
 
   </div>
@@ -1152,7 +1149,7 @@
           animation:false,
           plugins:{
             legend:{ display:true, position:'top' },
-            tooltip:{ mode:'index', intersect:false, position:'nearest' }
+            tooltip:{ mode:'x', intersect:false, position:'nearest' }
           },
           scales:{
             x:{ type:'time', time:{ unit:'day', tooltipFormat:'MMM dd, yyyy' }, title:{ display:true, text:'Date' } },
@@ -1190,59 +1187,74 @@
         return isNaN(parsed) ? null : fmt(parsed);
       }
 
-      function appendRow(stage, progress, histDate, selectedDate, comment, rowSpan = null){
+      function sortDateValue(selectedDate, histDate){
+        return normalizeDateString(selectedDate) || normalizeDateString(histDate);
+      }
+
+      function appendRow(comment, histDate, selectedDate){
         const tr = document.createElement('tr');
-        const hasStage = !!stage;
-        const stageCell = hasStage
-          ? (rowSpan ? `<td class="stage-cell" rowspan="${rowSpan}">${stage}</td>` : `<td class="stage-cell">${stage}</td>`)
-          : '';
         const safeHistDate = normalizeDateString(histDate);
         const safeSelectedDate = normalizeDateString(selectedDate);
-        tr.innerHTML = `${stageCell}
-                        <td class="progress-cell">${progress}</td>
+        tr.innerHTML = `<td>${comment || '—'}</td>
                         <td>${safeHistDate ? formatHist(safeHistDate) : '—'}</td>
-                        <td>${safeSelectedDate ? formatSelected(safeSelectedDate) : '—'}</td>
-                        <td>${comment || '—'}</td>`;
+                        <td>${safeSelectedDate ? formatSelected(safeSelectedDate) : '—'}</td>`;
         tbody.appendChild(tr);
       }
 
       const safePlantingDate = normalizeDateString(plantingDate);
-      appendRow('Transplanting', '—', safePlantingDate, safePlantingDate, 'User-entered transplant date');
+      const actions = [
+        {
+          histDate: safePlantingDate,
+          selectedDate: safePlantingDate,
+          action: 'User-entered transplant date'
+        },
+        {
+          histDate: firstDateAt(calculateAttachment, histAvg, histDates, 0.05),
+          selectedDate: firstDateAt(calculateAttachment, currentVals, currentDates, 0.05),
+          action: 'First chemigation around this date'
+        },
+        {
+          histDate: firstDateAt(calculateAttachment, histAvg, histDates, 0.50),
+          selectedDate: firstDateAt(calculateAttachment, currentVals, currentDates, 0.50),
+          action: 'Second chemigation around this date'
+        },
+        {
+          histDate: firstDateAt(calculateAttachment, histAvg, histDates, 0.90),
+          selectedDate: firstDateAt(calculateAttachment, currentVals, currentDates, 0.90),
+          action: 'Final chemigation around this date'
+        },
+        {
+          histDate: firstDateAt(calculateEmergence, histAvg, histDates, 0.05),
+          selectedDate: firstDateAt(calculateEmergence, currentVals, currentDates, 0.05),
+          action: 'Begin scouting around this date'
+        },
+        {
+          histDate: firstDateAt(calculateEmergence, histAvg, histDates, 0.90),
+          selectedDate: firstDateAt(calculateEmergence, currentVals, currentDates, 0.90),
+          action: 'Complete second rogueing if broomrape is present'
+        },
+        {
+          histDate: firstDateAt(calculateFlowering, histAvg, histDates, 0.05),
+          selectedDate: firstDateAt(calculateFlowering, currentVals, currentDates, 0.05),
+          action: 'Rogue field within 7 days of this date'
+        },
+        {
+          histDate: firstDateAt(calculateFlowering, histAvg, histDates, 0.90),
+          selectedDate: firstDateAt(calculateFlowering, currentVals, currentDates, 0.90),
+          action: 'Complete 3rd rogueing if broomrape is still present'
+        }
+      ];
 
-      const attachment5 = firstDateAt(calculateAttachment, histAvg, histDates, 0.05);
-      const attachment50 = firstDateAt(calculateAttachment, histAvg, histDates, 0.50);
-      const attachment90 = firstDateAt(calculateAttachment, histAvg, histDates, 0.90);
-      const attachment5Sel = firstDateAt(calculateAttachment, currentVals, currentDates, 0.05);
-      const attachment50Sel = firstDateAt(calculateAttachment, currentVals, currentDates, 0.50);
-      const attachment90Sel = firstDateAt(calculateAttachment, currentVals, currentDates, 0.90);
+      actions.sort((a, b) => {
+        const aDate = sortDateValue(a.selectedDate, a.histDate);
+        const bDate = sortDateValue(b.selectedDate, b.histDate);
+        if(aDate && bDate) return new Date(aDate) - new Date(bDate);
+        if(aDate) return -1;
+        if(bDate) return 1;
+        return 0;
+      });
 
-      appendRow('Attachment', '5%', attachment5, attachment5Sel, 'First chemigation around this date', 3);
-      appendRow('', '50%', attachment50, attachment50Sel, 'Second chemigation around this date');
-      appendRow('', '90%', attachment90, attachment90Sel, 'Final chemigation around this date');
-
-      const elongation5 = firstDateAt(calculateElongation, histAvg, histDates, 0.05);
-      const elongation90 = firstDateAt(calculateElongation, histAvg, histDates, 0.90);
-      const elongation5Sel = firstDateAt(calculateElongation, currentVals, currentDates, 0.05);
-      const elongation90Sel = firstDateAt(calculateElongation, currentVals, currentDates, 0.90);
-
-      appendRow('Elongation', '5%', elongation5, elongation5Sel, '—', 2);
-      appendRow('', '90%', elongation90, elongation90Sel, '—');
-
-      const emergence5 = firstDateAt(calculateEmergence, histAvg, histDates, 0.05);
-      const emergence90 = firstDateAt(calculateEmergence, histAvg, histDates, 0.90);
-      const emergence5Sel = firstDateAt(calculateEmergence, currentVals, currentDates, 0.05);
-      const emergence90Sel = firstDateAt(calculateEmergence, currentVals, currentDates, 0.90);
-
-      appendRow('Emergence', '5%', emergence5, emergence5Sel, 'Begin scouting around this date', 2);
-      appendRow('', '90%', emergence90, emergence90Sel, 'Complete second rogueing if broomrape is present');
-
-      const flowering5 = firstDateAt(calculateFlowering, histAvg, histDates, 0.05);
-      const flowering90 = firstDateAt(calculateFlowering, histAvg, histDates, 0.90);
-      const flowering5Sel = firstDateAt(calculateFlowering, currentVals, currentDates, 0.05);
-      const flowering90Sel = firstDateAt(calculateFlowering, currentVals, currentDates, 0.90);
-
-      appendRow('Flowering', '5%', flowering5, flowering5Sel, 'Rogue field within 7 days of this date', 2);
-      appendRow('', '90%', flowering90, flowering90Sel, 'Complete 3rd rogueing if broomrape is still present');
+      actions.forEach(item => appendRow(item.action, item.histDate, item.selectedDate));
 
       tableCard.style.display='block';
     }
@@ -1267,7 +1279,7 @@
       return isNaN(parsed) ? null : fmt(parsed);
     }
 
-    function buildWorksheetTable(histAvg, histDates, plantingDate){
+    function buildWorksheetTable(histAvg, histDates, plantingDate, currentVals, currentDates){
       const worksheetCard = document.getElementById('worksheetCard');
       const worksheetBody = document.querySelector('#worksheetTable tbody');
       const worksheetMeta = document.getElementById('worksheetMeta');
@@ -1282,86 +1294,87 @@
       const lon = document.getElementById('lon').textContent || '—';
       const safePlantingDate = normalizeDateString(plantingDate);
 
+      const endDateValue = document.getElementById('endDate')?.value;
+      const safeEndDate = normalizeDateString(endDateValue);
+      const printedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
       worksheetMeta.innerHTML = `
+        <strong>Date printed:</strong> ${printedDate}<br>
         <strong>Grower / Farm:</strong> ${growerName}<br>
         <strong>Field Identifier:</strong> ${fieldId}<br>
         <strong>Location:</strong> ${locationName}<br>
         <strong>Coordinates:</strong> ${lat}, ${lon}<br>
-        <strong>Target Transplanting Date:</strong> ${safePlantingDate ? formatSelected(safePlantingDate) : '—'}<br>
+        <strong>User entered dates.</strong> Transplant Date: ${safePlantingDate ? formatSelected(safePlantingDate) : '—'}. End date: ${safeEndDate ? formatSelected(safeEndDate) : '—'}<br>
         <strong>Notes:</strong> ${notes}
       `;
 
+      function preferredDate(selectedDate, histDate){
+        const safeSelected = normalizeDateString(selectedDate);
+        if(safeSelected) return { date: safeSelected, usedHistorical: false };
+        const safeHist = normalizeDateString(histDate);
+        if(safeHist) return { date: safeHist, usedHistorical: true };
+        return { date: null, usedHistorical: false };
+      }
+
       const actions = [
         {
-          stage: 'Transplanting',
-          progress: '—',
-          date: safePlantingDate,
+          histDate: safePlantingDate,
+          selectedDate: safePlantingDate,
           action: 'User-entered transplant date'
         },
         {
-          stage: 'Attachment',
-          progress: '5%',
-          date: firstDateAt(calculateAttachment, histAvg, histDates, 0.05),
+          histDate: firstDateAt(calculateAttachment, histAvg, histDates, 0.05),
+          selectedDate: firstDateAt(calculateAttachment, currentVals, currentDates, 0.05),
           action: 'First chemigation around this date'
         },
         {
-          stage: 'Attachment',
-          progress: '50%',
-          date: firstDateAt(calculateAttachment, histAvg, histDates, 0.50),
+          histDate: firstDateAt(calculateAttachment, histAvg, histDates, 0.50),
+          selectedDate: firstDateAt(calculateAttachment, currentVals, currentDates, 0.50),
           action: 'Second chemigation around this date'
         },
         {
-          stage: 'Attachment',
-          progress: '90%',
-          date: firstDateAt(calculateAttachment, histAvg, histDates, 0.90),
+          histDate: firstDateAt(calculateAttachment, histAvg, histDates, 0.90),
+          selectedDate: firstDateAt(calculateAttachment, currentVals, currentDates, 0.90),
           action: 'Final chemigation around this date'
         },
         {
-          stage: 'Elongation',
-          progress: '5%',
-          date: firstDateAt(calculateElongation, histAvg, histDates, 0.05),
-          action: '—'
-        },
-        {
-          stage: 'Elongation',
-          progress: '90%',
-          date: firstDateAt(calculateElongation, histAvg, histDates, 0.90),
-          action: '—'
-        },
-        {
-          stage: 'Emergence',
-          progress: '5%',
-          date: firstDateAt(calculateEmergence, histAvg, histDates, 0.05),
+          histDate: firstDateAt(calculateEmergence, histAvg, histDates, 0.05),
+          selectedDate: firstDateAt(calculateEmergence, currentVals, currentDates, 0.05),
           action: 'Begin scouting around this date'
         },
         {
-          stage: 'Emergence',
-          progress: '90%',
-          date: firstDateAt(calculateEmergence, histAvg, histDates, 0.90),
+          histDate: firstDateAt(calculateEmergence, histAvg, histDates, 0.90),
+          selectedDate: firstDateAt(calculateEmergence, currentVals, currentDates, 0.90),
           action: 'Complete second rogueing if broomrape is present'
         },
         {
-          stage: 'Flowering',
-          progress: '5%',
-          date: firstDateAt(calculateFlowering, histAvg, histDates, 0.05),
+          histDate: firstDateAt(calculateFlowering, histAvg, histDates, 0.05),
+          selectedDate: firstDateAt(calculateFlowering, currentVals, currentDates, 0.05),
           action: 'Rogue field within 7 days of this date'
         },
         {
-          stage: 'Flowering',
-          progress: '90%',
-          date: firstDateAt(calculateFlowering, histAvg, histDates, 0.90),
+          histDate: firstDateAt(calculateFlowering, histAvg, histDates, 0.90),
+          selectedDate: firstDateAt(calculateFlowering, currentVals, currentDates, 0.90),
           action: 'Complete 3rd rogueing if broomrape is still present'
         }
       ];
 
+      actions.sort((a, b) => {
+        const aHist = normalizeDateString(a.histDate);
+        const bHist = normalizeDateString(b.histDate);
+        if(aHist && bHist) return new Date(aHist) - new Date(bHist);
+        if(aHist) return -1;
+        if(bHist) return 1;
+        return 0;
+      });
+
       actions.forEach(item => {
+        const recommendedDate = preferredDate(item.selectedDate, item.histDate);
+        const safeDate = recommendedDate.date;
         const tr = document.createElement('tr');
-        const safeDate = normalizeDateString(item.date);
         tr.innerHTML = `
-          <td>${item.stage}</td>
-          <td class="progress-cell">${item.progress}</td>
-          <td>${safeDate ? formatHist(safeDate) : '—'}</td>
           <td>${item.action}</td>
+          <td>${safeDate ? `${formatSelected(safeDate)}${recommendedDate.usedHistorical ? '*' : ''}` : '—'}</td>
           <td><span class="blank-line"></span></td>
           <td><span class="blank-line" style="min-width:180px"></span></td>
         `;
@@ -1384,7 +1397,7 @@
         errorDiv.style.display='block';
         return false;
       }
-      buildWorksheetTable(lastWorksheetData.histAvg, lastWorksheetData.histDates, lastWorksheetData.plantingDate);
+      buildWorksheetTable(lastWorksheetData.histAvg, lastWorksheetData.histDates, lastWorksheetData.plantingDate, lastWorksheetData.currentVals, lastWorksheetData.currentDates);
       return true;
     }
 
@@ -1521,7 +1534,7 @@
         const currentDates = dailyData.map(d => d.date);
         const currentVals = dailyData.map(d => d.cumulative);
         buildStageTable(histAvg, histDates, currentVals, currentDates, plantingDate);
-        lastWorksheetData = { histAvg, histDates, plantingDate };
+        lastWorksheetData = { histAvg, histDates, plantingDate, currentVals, currentDates };
         document.getElementById('worksheetCard').style.display = 'none';
 
       }catch(err){
